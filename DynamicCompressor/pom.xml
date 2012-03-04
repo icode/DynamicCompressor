@@ -31,7 +31,7 @@
     <version>1.0.1</version>
     <packaging>jar</packaging>
 
-    <name>DynamicCompressor</name>
+    <name>Dynamic Compressor</name>
     <url>http://www.log4ic.com</url>
 
     <inceptionYear>2011</inceptionYear>
