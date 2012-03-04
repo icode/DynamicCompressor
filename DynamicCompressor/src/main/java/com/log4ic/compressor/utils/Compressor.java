@@ -39,6 +39,8 @@ import com.log4ic.compressor.cache.Cache;
 import com.log4ic.compressor.cache.CacheContent;
 import com.log4ic.compressor.cache.CacheManager;
 import com.log4ic.compressor.exception.CompressionException;
+import com.log4ic.compressor.exception.QueryStringEmptyException;
+import com.log4ic.compressor.exception.UnsupportedFileTypeException;
 import com.log4ic.compressor.servlet.http.CompressionResponseWrapper;
 import javolution.util.FastList;
 import javolution.util.FastMap;
@@ -430,9 +432,9 @@ public class Compressor {
             try {
                 wrapperResponse.close();
             } catch (IOException e) {
-                throw new CompressionException("IO异常", e);
+                throw new CompressionException(e);
             } catch (Throwable throwable) {
-                throw new CompressionException("销毁Response异常", throwable);
+                throw new CompressionException("Close Response error", throwable);
             }
         }
         return code.toString();
@@ -527,12 +529,12 @@ public class Compressor {
      * @param response
      * @return
      */
-    public static boolean compress(HttpServletRequest request, HttpServletResponse response) throws CompressionException, GssParserException {
-        return compress(request, response, null, null);
+    public static void compress(HttpServletRequest request, HttpServletResponse response) throws CompressionException, GssParserException {
+        compress(request, response, null, null);
     }
 
-    public static boolean compress(HttpServletRequest request, HttpServletResponse response, CacheManager cacheManager) throws CompressionException, GssParserException {
-        return compress(request, response, cacheManager, null);
+    public static void compress(HttpServletRequest request, HttpServletResponse response, CacheManager cacheManager) throws CompressionException, GssParserException {
+        compress(request, response, cacheManager, null);
     }
 
 
@@ -592,7 +594,7 @@ public class Compressor {
             writer.flush();
             response.flushBuffer();
         } catch (IOException e) {
-            throw new CompressionException("IO异常", e);
+            throw new CompressionException("Write code to client error.", e);
         }
     }
 
@@ -600,14 +602,14 @@ public class Compressor {
         //分割请求地址
         String[] uris = HttpUtils.getRequestUri(request).split("\\.");
         if (uris.length == 0) {
-            throw new CompressionException("Un support FileType Exception,URI Error");
+            throw new UnsupportedFileTypeException();
         }
         FileType type;
         //根据请求后缀获取压缩内容类型
         try {
             type = FileType.valueOf(uris[uris.length - 1].toUpperCase());
         } catch (Exception e) {
-            throw new CompressionException("Un support FileType Exception", e);
+            throw new UnsupportedFileTypeException();
         }
         return type;
     }
@@ -695,12 +697,12 @@ public class Compressor {
      *
      * @throws GssParserException
      */
-    public static boolean compress(HttpServletRequest request, HttpServletResponse response, @Nullable CacheManager cacheManager, String fileDomain) throws CompressionException, GssParserException {
+    public static void compress(HttpServletRequest request, HttpServletResponse response, @Nullable CacheManager cacheManager, String fileDomain) throws CompressionException, GssParserException {
 
         String queryString = HttpUtils.getQueryString(request);
 
         if (StringUtils.isBlank(queryString)) {
-            return false;
+            throw new QueryStringEmptyException();
         }
 
         //去除重复参数
@@ -749,8 +751,6 @@ public class Compressor {
 
         //将内容输出
         writeOutCode(code, type, response);
-
-        return true;
     }
 
 }

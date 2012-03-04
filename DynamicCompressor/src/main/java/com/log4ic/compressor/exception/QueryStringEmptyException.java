@@ -27,21 +27,20 @@ package com.log4ic.compressor.exception;
 /**
  * @author 张立鑫 IntelligentCode
  */
-public class CompressionException extends Exception {
-    public CompressionException() {
-        super("Compression exception");
+public class QueryStringEmptyException extends CompressionException{
+    public QueryStringEmptyException() {
+        super("Compression query string empty.");
     }
 
-    public CompressionException(String message) {
+    public QueryStringEmptyException(String message) {
         super(message);
     }
 
-    public CompressionException(String message, Throwable cause) {
+    public QueryStringEmptyException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public CompressionException(Throwable cause) {
+    public QueryStringEmptyException(Throwable cause) {
         super(cause);
     }
-
 }

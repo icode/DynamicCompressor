@@ -25,13 +25,17 @@
 package com.log4ic.compressor.servlet;
 
 import com.google.common.css.compiler.ast.GssParserException;
-import com.log4ic.compressor.cache.SimpleCacheManager;
 import com.log4ic.compressor.cache.CacheType;
+import com.log4ic.compressor.cache.SimpleCacheManager;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.exception.CompressionException;
+import com.log4ic.compressor.exception.QueryStringEmptyException;
+import com.log4ic.compressor.exception.UnsupportedFileTypeException;
 import com.log4ic.compressor.utils.Compressor;
 import com.log4ic.compressor.utils.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
@@ -39,6 +43,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
 
 /**
  * JS CSS 压缩器Servlet
@@ -50,21 +55,36 @@ public class CompressionServlet extends HttpServlet {
     private static SimpleCacheManager cacheManager = null;
     private static boolean initialized = false;
     private static String fileDomain = null;
+    private static Logger logger = LoggerFactory.getLogger(CompressionServlet.class);
 
 
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setCharacterEncoding("utf8");
+        PrintWriter writer = resp.getWriter();
+        //TODO 错误处理,调整显示页面
         try {
-            Boolean success = Compressor.compress(req, resp, cacheManager, fileDomain);
-            if (!success) {
-                resp.setStatus(404);
-            }
+            Compressor.compress(req, resp, cacheManager, fileDomain);
+        } catch (QueryStringEmptyException e) {
+            logger.error("参数错误.", e);
+            //501 - Not Implemented 服务器不支持实现请求所需要的功能，页眉值指定了未实现的配置
+            resp.setStatus(501);
+            writer.write("参数错误." + e.getMessage());
+        } catch (UnsupportedFileTypeException e) {
+            logger.error("不支持的文件处理类型.", e);
+            //501 - Not Implemented 服务器不支持实现请求所需要的功能，页眉值指定了未实现的配置
+            resp.setStatus(501);
+            writer.write("不支持的文件处理类型." + e.getMessage());
         } catch (CompressionException e) {
-            e.printStackTrace();
-            resp.setStatus(404);
+            logger.error("内容处理错误.", e);
+            //501 - Not Implemented 服务器不支持实现请求所需要的功能，页眉值指定了未实现的配置
+            resp.setStatus(501);
+            writer.write("内容处理错误." + e.getMessage());
         } catch (GssParserException e) {
-            e.printStackTrace();
-            resp.setStatus(404);
+            logger.error("内容处理错误,CSS语法错误.", e);
+            //501 - Not Implemented 服务器不支持实现请求所需要的功能，页眉值指定了未实现的配置
+            resp.setStatus(501);
+            writer.write("内容处理错误,CSS语法错误." + e.getMessage());
         }
     }
 

@@ -26,22 +26,22 @@ package com.log4ic.compressor.exception;
 
 /**
  * @author 张立鑫 IntelligentCode
+ * @date 12-3-4
  */
-public class CompressionException extends Exception {
-    public CompressionException() {
-        super("Compression exception");
+public class UnsupportedFileTypeException extends CompressionException{
+    public UnsupportedFileTypeException() {
+        super("Unsupported file type exception,URI Error.");
     }
 
-    public CompressionException(String message) {
+    public UnsupportedFileTypeException(String message) {
         super(message);
     }
 
-    public CompressionException(String message, Throwable cause) {
+    public UnsupportedFileTypeException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public CompressionException(Throwable cause) {
+    public UnsupportedFileTypeException(Throwable cause) {
         super(cause);
     }
-
 }
