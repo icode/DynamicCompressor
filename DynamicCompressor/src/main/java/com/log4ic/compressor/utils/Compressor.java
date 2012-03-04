@@ -112,11 +112,11 @@ public class Compressor {
         logger.debug("压缩JS...");
         compiler.compile(externFiles, jsFiles, options);
         compressed = compiler.toSource();
-        logger.debug("压缩JS完成...");
+        logger.debug("压缩JS完毕...");
         if (StringUtils.isNotBlank(jsOutputFile)) {
             logger.debug("将压缩的JS写入文件...");
             sourceToFile(compressed, new File(jsOutputFile));
-            logger.debug("写入文件完成...");
+            logger.debug("写入文件完毕...");
         }
         return compressed;
     }
@@ -237,24 +237,29 @@ public class Compressor {
      * @throws GssParserException
      */
     public static String compressCSS(JobDescriptionBuilder builder) throws GssParserException {
-        JobDescription job = builder.getJobDescription();
-        GssParser parser = new GssParser(job.inputs);
-        CssTree cssTree = parser.parse();
-        CompilerErrorManager errorManager = new CompilerErrorManager();
-        PassRunner passRunner = new PassRunner(job, errorManager);
-        if (job.outputFormat != JobDescription.OutputFormat.DEBUG) {
-            passRunner.runPasses(cssTree);
-        }
+        logger.debug("压缩CSS...");
+        try {
+            JobDescription job = builder.getJobDescription();
+            GssParser parser = new GssParser(job.inputs);
+            CssTree cssTree = parser.parse();
+            CompilerErrorManager errorManager = new CompilerErrorManager();
+            PassRunner passRunner = new PassRunner(job, errorManager);
+            if (job.outputFormat != JobDescription.OutputFormat.DEBUG) {
+                passRunner.runPasses(cssTree);
+            }
 
-        if (job.outputFormat == JobDescription.OutputFormat.COMPRESSED) {
-            CompactPrinter compactPrinterPass = new CompactPrinter(cssTree);
-            compactPrinterPass.runPass();
-            return compactPrinterPass.getCompactPrintedString();
-        } else {
-            PrettyPrinter prettyPrinterPass = new PrettyPrinter(cssTree
-                    .getVisitController());
-            prettyPrinterPass.runPass();
-            return prettyPrinterPass.getPrettyPrintedString();
+            if (job.outputFormat == JobDescription.OutputFormat.COMPRESSED) {
+                CompactPrinter compactPrinterPass = new CompactPrinter(cssTree);
+                compactPrinterPass.runPass();
+                return compactPrinterPass.getCompactPrintedString();
+            } else {
+                PrettyPrinter prettyPrinterPass = new PrettyPrinter(cssTree
+                        .getVisitController());
+                prettyPrinterPass.runPass();
+                return prettyPrinterPass.getPrettyPrintedString();
+            }
+        } finally {
+            logger.debug("压缩CSS完毕...");
         }
     }
 
@@ -280,6 +285,7 @@ public class Compressor {
      * @return
      */
     public static String fixUrlPath(String code, String fileUrl, FileType type, String fileDomain) {
+        logger.debug("修正文件内的URL相对指向...");
         StringBuilder codeBuffer = new StringBuilder();
         switch (type) {
             case GSS:
@@ -360,6 +366,7 @@ public class Compressor {
                 codeBuffer.append(code);
                 break;
         }
+        logger.debug("修正文件内的URL相对指向完毕...");
         return codeBuffer.toString();
     }
 
