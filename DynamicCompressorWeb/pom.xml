@@ -28,7 +28,7 @@
     <groupId>com.log4ic.compressor</groupId>
     <artifactId>dynamic-compressor-web</artifactId>
     <packaging>war</packaging>
-    <version>1.0</version>
+    <version>1.0.1</version>
     <name>DynamicCompressorWeb</name>
     <url>http://www.log4ic.com</url>
     <inceptionYear>2011</inceptionYear>
@@ -59,7 +59,7 @@
         <dependency>
             <groupId>com.log4ic.compressor</groupId>
             <artifactId>dynamic-compressor</artifactId>
-            <version>1.0</version>
+            <version>1.0.1</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
