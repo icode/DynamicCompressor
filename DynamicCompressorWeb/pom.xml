@@ -104,6 +104,14 @@
                     <server>tomcat</server>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-scm-plugin</artifactId>
+                <version>1.6</version>
+                <configuration>
+                    <goals>install</goals>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
