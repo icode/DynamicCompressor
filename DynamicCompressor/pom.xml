@@ -40,6 +40,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <scm>
+        <connection>
+            scm:git:https://intelligentcode@github.com/intelligentcode/DynamicCompressor.git
+        </connection>
+        <developerConnection>
+            scm:git:https://intelligentcode@github.com/intelligentcode/DynamicCompressor.git
+        </developerConnection>
+        <url>
+            https://github.com/intelligentcode/DynamicCompressor/tree/master/DynamicCompressorWeb
+        </url>
+    </scm>
+
     <licenses>
         <license>
             <comments>
@@ -111,4 +123,5 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
 </project>
