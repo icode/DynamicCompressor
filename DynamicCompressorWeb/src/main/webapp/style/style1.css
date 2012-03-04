@@ -1,0 +1,127 @@
+/*
+ * Dynamic Compressor - Java Library
+ * Copyright (c) 2011-2012, IntelligentCode ZhangLixin.
+ * All rights reserved.
+ * intelligentcodemail@gmail.com
+ *
+ * GUN GPL 3.0 License
+ *
+ * http://www.gnu.org/licenses/gpl.html
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#copyright {
+    font-size: 11px;
+    color: #fff;
+    text-align: center;
+    margin: 0 auto;
+    padding: 10px 0;
+}
+#box_header {
+    border: 1px solid #ff6f00;
+    padding: 0 10px 10px;
+    background-color: #dfdfdf;
+}
+.box_header2 {
+    margin: 20px 0 0;
+    border: 1px solid #ff6f00;
+    padding: 0 10px 10px;
+    background-color: #dfdfdf;
+}
+.box {
+    border: 1px solid #333;
+    background-color: #fff;
+}
+h1 {
+    color: #000;
+    background-color: #ff6f00;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0 -10px 5px;
+    padding: 5px 5px 5px 10px;
+}
+h2 {
+    color: #fff;
+    background-color: #404343;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0 -10px 5px;
+    padding: 5px 5px 5px 10px;
+}
+h3 {
+    margin: 0 0 4px;
+    padding: 18px 0 4px;
+    color: #13376b;
+    background-color: transparent;
+    font-size: 12px;
+    font-weight: bold;
+    border-bottom: gray;
+    border-width: 0 0 1px;
+    border-style: none none solid;
+}
+.section {
+    border: none;
+    padding: 0;
+}
+.section_head {
+    border: 1px solid #ff6f00;
+    padding: 0 10px 10px;
+    background-color: #dfdfdf;
+}
+.section_head h2 {
+    color: #000;
+    background-color: #ff6f00;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0 -10px 5px;
+    padding: 5px 5px 5px 10px;
+}
+.section_head p {
+    margin: 6px;
+    color: #000;
+}
+.box {
+    padding: 0 10px 10px;
+    margin: 10px 0 0;
+}
+.box:after {
+    content: ".";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
+.box h3 {
+    color: #fff;
+    background-color: #404343;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin: 0 -10px 5px;
+    padding: 5px 5px 5px 10px;
+}
+fieldset {
+    border: none;
+    margin: 0;
+    padding: 5px 0 0;
+    color: #000;
+}

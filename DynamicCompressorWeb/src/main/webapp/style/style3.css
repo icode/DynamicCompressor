@@ -1,0 +1,102 @@
+
+/*
+ * Dynamic Compressor - Java Library
+ * Copyright (c) 2011-2012, IntelligentCode ZhangLixin.
+ * All rights reserved.
+ * intelligentcodemail@gmail.com
+ *
+ * GUN GPL 3.0 License
+ *
+ * http://www.gnu.org/licenses/gpl.html
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+.formarea .form_label_middle {
+    vertical-align: middle;
+    font-weight: bold;
+    text-align: right;
+    padding-right: 10px;
+    width: 170px;
+}
+.formarea .form_label_bottom {
+    vertical-align: text-bottom;
+    font-weight: bold;
+    text-align: right;
+    padding-right: 10px;
+    width: 170px;
+}
+.formarea .form_label_radio {
+    vertical-align: top;
+    font-weight: bold;
+    text-align: right;
+    padding-right: 5px;
+    width: 170px;
+}
+.formarea .form_label_left {
+    font-weight: bold;
+    text-align: left;
+    padding-right: 8px;
+}
+.form_label_col {
+    padding: 2px 4px;
+    font-weight: bold;
+}
+td.centered, th.centered {
+    text-align: center;
+}
+td.bottom, th.bottom {
+    vertical-align: bottom;
+}
+table#adv_inboundfilter_rule {
+    width: 100%;
+}
+table#adv_macaddressfilter_list .formlist_col3 {
+    width: 60%;
+}
+.button_submit {
+    margin: 0 10px 0 0;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+.button_submit_padleft {
+    margin: 0 0 0 10px;
+    padding: 2px 4px;
+    white-space: nowrap;
+}
+.button_disabled {
+    background-color: #999;
+    color: #ccc;
+    border: 2px solid #999;
+}
+input.arrow {
+    margin: 0;
+    padding: 2px 0;
+    white-space: nowrap;
+}
+button {
+    font-size: 11px;
+    padding: 2px;
+}
+button p {
+    font-size: 11px;
+    margin: auto;
+}
+.help_example dl {
+    background-color: #dfdfdf;
+    padding: 0 0 0 4px;
+    border: gray;
+    border-width: 1px;
+    border-style: solid;
+}

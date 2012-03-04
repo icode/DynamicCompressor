@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ Dynamic Compressor - Java Library
+  ~ Copyright (c) 2011-2012, IntelligentCode ZhangLixin.
+  ~ All rights reserved.
+  ~ intelligentcodemail@gmail.com
+  ~
+  ~ GUN GPL 3.0 License
+  ~
+  ~ http://www.gnu.org/licenses/gpl.html
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+		  http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+         version="2.5">
+    <display-name>Archetype Created Web Application</display-name>
+    <!-- 游览器缓存 -->
+    <filter>
+        <filter-name>BrowserCacheFilter</filter-name>
+        <filter-class>
+            com.log4ic.compressor.cache.filter.BrowserCacheFilter
+        </filter-class>
+        <init-param>
+            <param-name>cache-time</param-name>
+            <param-value>86000</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>BrowserCacheFilter</filter-name>
+        <url-pattern>*.js</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>BrowserCacheFilter</filter-name>
+        <url-pattern>*.css</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>BrowserCacheFilter</filter-name>
+        <url-pattern>*.png</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>BrowserCacheFilter</filter-name>
+        <url-pattern>*.gif</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>BrowserCacheFilter</filter-name>
+        <url-pattern>*.jpg</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>BrowserCacheFilter</filter-name>
+        <servlet-name>compress</servlet-name>
+    </filter-mapping>
+    <!-- JS 动态压缩 -->
+    <servlet>
+        <servlet-name>compress</servlet-name>
+        <servlet-class>com.log4ic.compressor.servlet.CompressionServlet</servlet-class>
+        <!--<init-param>
+            <description>静态文件路径，如图片，文字，用于压缩文件时转换内部的相对路径为绝对路径，如果为空则是“/”，当资源文件和服务器不再同服务器时应用此项</description>
+            <param-name>fileDomain</param-name>
+            <param-value>localhost:8080</param-value>
+        </init-param>-->
+        <init-param>
+            <description>缓存类型,file,memory,none为不缓存</description>
+            <param-name>cacheType</param-name>
+            <param-value>memory</param-value>
+        </init-param>
+        <init-param>
+            <description>压缩后的缓存文件目录,{contextPath}为项目目录</description>
+            <param-name>cacheDir</param-name>
+            <param-value>{contextPath}/static/compressed/</param-value>
+        </init-param>
+        <init-param>
+            <description>缓存的最大数目,超过此数目则采用最近最少算法（Least Recently Used，LRU）</description>
+            <param-name>cacheCount</param-name>
+            <param-value>20</param-value>
+        </init-param>
+        <init-param>
+            <description>是否自动清理长时间未使用及命中低的缓存</description>
+            <param-name>autoClean</param-name>
+            <param-value>false</param-value>
+        </init-param>
+        <init-param>
+            <description>自动清理时间,需开启autoClean设置</description>
+            <param-name>cleanInterval</param-name>
+            <param-value>1000000</param-value>
+        </init-param>
+        <init-param>
+            <description>自动清理的最低命中底线,低于等于此命中并且早于cleanHourAgo设置的的缓存将被清理,需开启autoClean设置</description>
+            <param-name>cleanLowHit</param-name>
+            <param-value>1</param-value>
+        </init-param>
+        <init-param>
+            <description>清理多久之前命中的缓存,单位为小时,早于等于此时间并且命中低于cleanLowHit设置的的缓存将被清理,需开启autoClean设置</description>
+            <param-name>cleanHourAgo</param-name>
+            <param-value>3</param-value>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>compress</servlet-name>
+        <url-pattern>/compress.gss</url-pattern>
+        <url-pattern>/compress.css</url-pattern>
+        <url-pattern>/compress.js</url-pattern>
+    </servlet-mapping>
+</web-app>
