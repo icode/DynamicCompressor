@@ -50,3 +50,27 @@
     position: relative;
     display: GOOG_INLINE_BLOCK_DISPLAY;
 }
+
+@defmixin size(WIDTH, HEIGHT) {
+  width: WIDTH;
+  height: HEIGHT;
+}
+
+.logo {
+  @mixin size(150px, 55px);
+  background-image: url('http://www.google.com/images/logo_sm.gif');
+}
+
+
+@defmixin gradient(POS, HSL1, HSL2, HSL3, COLOR, FALLBACK_COLOR) {
+  background-color: FALLBACK_COLOR; /* fallback color if gradients are not supported */
+  background-image: -webkit-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR);               /* Chrome 10+,Safari 5.1+ */
+  /* @alternate */ background-image: -moz-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* FF3.6+ */
+  /* @alternate */ background-image: -ms-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR);  /* IE10 */
+  /* @alternate */ background-image: -o-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR);   /* Opera 11.10+ */
+}
+
+.header {
+  @mixin gradient(top, 0%, 50%, 70%, #cc0000, #f07575);
+}
+
