@@ -379,11 +379,25 @@ public class Compressor {
     }
 
     public enum FileType {
-        JS,
-        CSS,
-        GSS
-    }
+        JS {
+            public boolean contains(String type) {
+                return JS.name().equals(type.toUpperCase());
+            }
+        },
+        CSS {
+            public boolean contains(String type) {
+                return CSS.name().equals(type.toUpperCase());
+            }
+        },
+        GSS {
+            public boolean contains(String type) {
+                return GSS.name().equals(type.toUpperCase()) ||
+                        CSS.name().equals(type.toUpperCase());
+            }
+        };
 
+        abstract boolean contains(String type);
+    }
 
     /**
      * 获取参数的文件并合并
@@ -402,7 +416,11 @@ public class Compressor {
         CompressionResponseWrapper wrapperResponse = null;
         //获取参数的文件并合并
         for (String url : fileUrlList) {
-            if (url.toLowerCase().endsWith(type.name().toLowerCase())) {
+            int index = url.lastIndexOf(".");
+            if (index < 0) {
+                continue;
+            }
+            if (type.contains(url.substring(index + 1))) {
                 try {
                     //如果是http/https 协议开头则视为跨域
                     if (HttpUtils.isHttpProtocol(url)) {
