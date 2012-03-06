@@ -177,23 +177,34 @@
 
 <p>GSS引入了大量数学函数，使用它们你可以对数字型的值——比方说像素——进行以下操作： add()、 sub()、mult()、 div()、 min()以及max()。使用这些函数的示例如下：</p>
 <pre>
-    @def LEFT_WIDTH 100px;
-    @def LEFT_PADDING 5px;
-    @def RIGHT_PADDING 5px;
+    @def LEFT_HAND_NAV_WIDTH    180px;
+    @def LEFT_HAND_NAV_PADDING  3px;
+
+    .left_hand_nav {
+        position: absolute;
+        width: LEFT_HAND_NAV_WIDTH;
+        padding: LEFT_HAND_NAV_PADDING;
+    }
+
     .content {
-    position: absolute;
-    margin-left: add(LEFT_PADDING,
-    LEFT_WIDTH,
-    RIGHT_PADDING,
-    px);
+        position: absolute;
+        margin-left: add(LEFT_HAND_NAV_PADDING,  /* padding left */
+        LEFT_HAND_NAV_WIDTH,
+        LEFT_HAND_NAV_PADDING); /* padding right */
+    }
 </pre>
 
 <p>得到的CSS如下所示：</p>
 
 <pre>
+    .left_hand_nav {
+      position: absolute;
+      width: 180px;
+      padding: 3px;
+    }
     .content {
-    position: absolute;
-    margin-left: 110px;
+      position: absolute;
+      margin-left: 186px;
     }
 </pre>
 
