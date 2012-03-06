@@ -41,9 +41,10 @@ import java.util.Map;
 public class GssFunctions {
     public static Map<String, GssFunction> getFunctionMap() {
         return ImmutableMap.<String, GssFunction>builder()
-                .put("getBrowserType", new GetBrowserType())
-                .put("getBrowserVersion", new GetBrowserVersion())
-                .put("getPlatform", new GetPlatform())
+//                .put("getBrowserType", new GetBrowserType())
+//                .put("getBrowserVersion", new GetBrowserVersion())
+//                .put("getPlatform", new GetPlatform())
+//                .put("import", new ImportStyleSheets())
                 .build();
     }
 
@@ -91,6 +92,32 @@ public class GssFunctions {
      * 用于获取浏览器平台
      */
     private static class GetPlatform implements GssFunction {
+        /**
+         * 返回所需的参数数目，如果为null则参数不定
+         *
+         * @return integer
+         */
+        @Override
+        public Integer getNumExpectedArguments() {
+            return null;
+        }
+
+        @Override
+        public List<CssValueNode> getCallResultNodes(List<CssValueNode> args, ErrorManager errorManager) throws GssFunctionException {
+            return null;
+        }
+
+        @Override
+        public String getCallResultString(List<String> args) throws GssFunctionException {
+            return null;
+        }
+    }
+
+    /**
+     * 导入样式
+     */
+    private static class ImportStyleSheets implements GssFunction {
+
         @Override
         public Integer getNumExpectedArguments() {
             return null;

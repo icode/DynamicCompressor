@@ -30,6 +30,7 @@ import com.google.common.css.SourceCode;
 import com.google.common.css.compiler.ast.CssTree;
 import com.google.common.css.compiler.ast.GssParser;
 import com.google.common.css.compiler.ast.GssParserException;
+import com.google.common.css.compiler.gssfunctions.DefaultGssFunctionMapProvider;
 import com.google.common.css.compiler.passes.CompactPrinter;
 import com.google.common.css.compiler.passes.PassRunner;
 import com.google.common.css.compiler.passes.PrettyPrinter;
@@ -42,6 +43,8 @@ import com.log4ic.compressor.exception.CompressionException;
 import com.log4ic.compressor.exception.QueryStringEmptyException;
 import com.log4ic.compressor.exception.UnsupportedFileTypeException;
 import com.log4ic.compressor.servlet.http.CompressionResponseWrapper;
+import com.log4ic.compressor.utils.gss.GssFunctionMapProvider;
+import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
 import javolution.util.FastList;
 import javolution.util.FastMap;
 import org.apache.commons.lang3.StringUtils;
@@ -83,6 +86,7 @@ public class Compressor {
      *
      * @param code
      * @param options
+     * @param jsOutputFile
      * @return
      */
     public static String compressJS(String code, CompilerOptions options, String jsOutputFile) {
@@ -94,6 +98,7 @@ public class Compressor {
      *
      * @param jsFiles
      * @param options
+     * @param jsOutputFile
      * @return
      */
     public static String compressJS(JSSourceFile[] jsFiles, CompilerOptions options, String jsOutputFile) {
@@ -106,6 +111,7 @@ public class Compressor {
      * @param externFiles
      * @param jsFiles
      * @param options
+     * @param jsOutputFile
      * @return
      */
     public static String compressJS(JSSourceFile[] externFiles, JSSourceFile[] jsFiles, CompilerOptions options, String jsOutputFile) {
@@ -162,6 +168,24 @@ public class Compressor {
     /**
      * 压缩JS
      *
+     * @param jsSourceFiles
+     * @param level
+     * @param isDebug
+     * @return
+     */
+    public static String compressJS(JSSourceFile[] jsSourceFiles, CompilationLevel level, Boolean isDebug) {
+        CompilerOptions options = new CompilerOptions();
+        options.setCodingConvention(new ClosureCodingConvention());
+        level.setOptionsForCompilationLevel(options);
+        if (isDebug) {
+            level.setDebugOptionsForCompilationLevel(options);
+        }
+        return compressJS(jsSourceFiles, options, null);
+    }
+
+    /**
+     * 压缩JS
+     *
      * @param code
      * @param level
      * @param isDebug
@@ -181,34 +205,31 @@ public class Compressor {
         FileUtils.writeFile(code, file.getPath());
     }
 
-//    private static final DefaultGssFunctionMapProvider gssFunctionMapProvider = new DefaultGssFunctionMapProvider();
-//
-//    static {
-//        Map<String, GssFunction> gssFunctionMap = gssFunctionMapProvider.get();
-//        gssFunctionMap.putAll(GssFunctions.getFunctionMap());
-//    }
+    private static final DefaultGssFunctionMapProvider gssFunctionMapProvider = new GssFunctionMapProvider();
 
 
     /**
      * 压缩css
      *
-     * @param code
+     * @param codeList
      * @param format
-     * @param fileType
      * @param conditions
      * @return
      * @throws GssParserException
      */
-    public static String compressCSS(String code, JobDescription.OutputFormat format, FileType fileType, List<String> conditions) throws GssParserException {
+    public static String compressCSS(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
         JobDescriptionBuilder builder = new JobDescriptionBuilder();
         builder.setAllowWebkitKeyframes(true);
         builder.setProcessDependencies(true);
         builder.setSimplifyCss(true);
         builder.setEliminateDeadStyles(true);
-        builder.addInput(new SourceCode("all." + (fileType == FileType.GSS ? "gss" : "css"), code));
+        for (SourceCode code : codeList) {
+            builder.addInput(code);
+        }
+
         builder.setOutputFormat(format);
         //设置内置方法
-        //builder.setGssFunctionMapProvider(gssFunctionMapProvider);
+        builder.setGssFunctionMapProvider(gssFunctionMapProvider);
         //设置浏览器断言
         if (conditions != null && conditions.size() > 0) {
             for (String con : conditions) {
@@ -218,18 +239,6 @@ public class Compressor {
         return compressCSS(builder);
     }
 
-    /**
-     * 压缩css
-     *
-     * @param code
-     * @param format
-     * @param fileType
-     * @return
-     * @throws GssParserException
-     */
-    public static String compressCSS(String code, JobDescription.OutputFormat format, FileType fileType) throws GssParserException {
-        return compressCSS(code, format, fileType, null);
-    }
 
     /**
      * 压缩css
@@ -244,9 +253,9 @@ public class Compressor {
             JobDescription job = builder.getJobDescription();
             GssParser parser = new GssParser(job.inputs);
             CssTree cssTree = parser.parse();
-            CompilerErrorManager errorManager = new CompilerErrorManager();
-            PassRunner passRunner = new PassRunner(job, errorManager);
             if (job.outputFormat != JobDescription.OutputFormat.DEBUG) {
+                CompilerErrorManager errorManager = new CompilerErrorManager();
+                PassRunner passRunner = new ExtendedPassRunner(job, errorManager);
                 passRunner.runPasses(cssTree);
             }
 
@@ -287,11 +296,12 @@ public class Compressor {
      * @return
      */
     public static String fixUrlPath(String code, String fileUrl, FileType type, String fileDomain) {
-        logger.debug("修正文件内的URL相对指向...");
+
         StringBuilder codeBuffer = new StringBuilder();
         switch (type) {
             case GSS:
             case CSS:
+                logger.debug("修正文件内的URL相对指向...");
                 Pattern pattern = Pattern.compile("url\\(([^)]+)\\)", Pattern.CASE_INSENSITIVE);
                 Matcher matcher = pattern.matcher(code);
 
@@ -363,12 +373,12 @@ public class Compressor {
                         codeBuffer.append(codeFragments[i]);
                     }
                 }
+                logger.debug("修正文件内的URL相对指向完毕...");
                 break;
             case JS:
                 codeBuffer.append(code);
                 break;
         }
-        logger.debug("修正文件内的URL相对指向完毕...");
         return codeBuffer.toString();
     }
 
@@ -411,8 +421,8 @@ public class Compressor {
      * @throws com.log4ic.compressor.exception.CompressionException
      *
      */
-    public static String mergeCode(String[] fileUrlList, HttpServletRequest request, HttpServletResponse response, FileType type, String fileDomain) throws CompressionException {
-        StringBuilder code = new StringBuilder();
+    public static List<SourceCode> mergeCode(String[] fileUrlList, HttpServletRequest request, HttpServletResponse response, FileType type, String fileDomain) throws CompressionException {
+        List<SourceCode> codeList = new FastList<SourceCode>();
         CompressionResponseWrapper wrapperResponse = null;
         //获取参数的文件并合并
         for (String url : fileUrlList) {
@@ -421,6 +431,7 @@ public class Compressor {
                 continue;
             }
             if (type.contains(url.substring(index + 1))) {
+                StringBuilder code = new StringBuilder();
                 try {
                     //如果是http/https 协议开头则视为跨域
                     if (HttpUtils.isHttpProtocol(url)) {
@@ -443,6 +454,8 @@ public class Compressor {
                 } catch (IOException e) {
                     throw new CompressionException(e);
                 }
+                SourceCode sourceCode = new SourceCode(url.substring(url.lastIndexOf("/") + 1), code.toString());
+                codeList.add(sourceCode);
             }
         }
 
@@ -455,14 +468,14 @@ public class Compressor {
                 throw new CompressionException("Close Response error", throwable);
             }
         }
-        return code.toString();
+        return codeList;
     }
 
 
     /**
      * 压缩
      *
-     * @param code
+     * @param fileSourceList
      * @param request
      * @param type
      * @return
@@ -471,41 +484,50 @@ public class Compressor {
      * @throws com.log4ic.compressor.exception.CompressionException
      *
      */
-    public static String compressCode(String code, HttpServletRequest request, FileType type) throws GssParserException, CompressionException {
+    public static String compressCode(List<SourceCode> fileSourceList, HttpServletRequest request, FileType type) throws GssParserException, CompressionException {
         //压缩
         boolean isDebug = HttpUtils.getBooleanParam(request, "debug");
-        switch (type) {
-            case JS:
-                CompilationLevel level = CompilationLevel.SIMPLE_OPTIMIZATIONS;
-                String levelParam = request.getParameter("level");
-                if (StringUtils.isNotBlank(levelParam)) {
-                    try {
-                        level = CompilationLevel.values()[Integer.parseInt(levelParam)];
-                    } catch (Exception e) {
+        String code = "";
+        if (fileSourceList.size() > 0) {
+            switch (type) {
+                case JS:
+
+                    CompilationLevel level = CompilationLevel.SIMPLE_OPTIMIZATIONS;
+                    String levelParam = request.getParameter("level");
+                    if (StringUtils.isNotBlank(levelParam)) {
                         try {
-                            level = CompilationLevel.valueOf(levelParam);
-                        } catch (IllegalArgumentException ae) {
-                            throw new CompressionException("ServletException", e);
+                            level = CompilationLevel.values()[Integer.parseInt(levelParam)];
+                        } catch (Exception e) {
+                            try {
+                                level = CompilationLevel.valueOf(levelParam);
+                            } catch (IllegalArgumentException ae) {
+                                throw new CompressionException("ServletException", e);
+                            }
+                        }
+                        if (level == null) {
+                            level = CompilationLevel.SIMPLE_OPTIMIZATIONS;
                         }
                     }
-                    if (level == null) {
-                        level = CompilationLevel.SIMPLE_OPTIMIZATIONS;
+                    JSSourceFile[] sourceFiles = new JSSourceFile[fileSourceList.size()];
+                    for (int i = 0; i < fileSourceList.size(); i++) {
+                        SourceCode source = fileSourceList.get(i);
+                        sourceFiles[i] = JSSourceFile.fromCode(source.getFileName(), source.getFileContents());
                     }
-                }
-                code = Compressor.compressJS(code, level, isDebug);
-                break;
-            case GSS:
-            case CSS:
-                JobDescription.OutputFormat format = JobDescription.OutputFormat.COMPRESSED;
-                if (isDebug) {
-                    format = JobDescription.OutputFormat.DEBUG;
-                } else if (HttpUtils.getBooleanParam(request, "pretty")) {
-                    format = JobDescription.OutputFormat.PRETTY_PRINTED;
-                }
+                    code = Compressor.compressJS(sourceFiles, level, isDebug);
+                    break;
+                case GSS:
+                case CSS:
+                    JobDescription.OutputFormat format = JobDescription.OutputFormat.COMPRESSED;
+                    if (isDebug) {
+                        format = JobDescription.OutputFormat.DEBUG;
+                    } else if (HttpUtils.getBooleanParam(request, "pretty")) {
+                        format = JobDescription.OutputFormat.PRETTY_PRINTED;
+                    }
 
-                //压缩代码并设置浏览器断言
-                code = Compressor.compressCSS(code, format, type, buildTrueConditions(request));
-                break;
+                    //压缩代码并设置浏览器断言
+                    code = Compressor.compressCSS(fileSourceList, format, buildTrueConditions(request));
+                    break;
+            }
         }
         return code;
     }
@@ -678,9 +700,9 @@ public class Compressor {
             //再次验证cache，如果是等待中的线程则不会再压缩
             if (cache == null) {
                 //获取参数的文件并合并
-                code = mergeCode(queryString.split("&"), request, response, type, fileDomain);
+                List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type, fileDomain);
                 //压缩
-                code = HttpUtils.getBooleanParam(request, "nocompress") ? code : compressCode(code, request, type);
+                code = HttpUtils.getBooleanParam(request, "nocompress") ? code : compressCode(codeList, request, type);
                 if (cacheManager != null) {
                     cacheManager.put(queryString, code, type);
                 }
@@ -702,6 +724,7 @@ public class Compressor {
             }
         }
     }
+
 
     /**
      * 压缩
