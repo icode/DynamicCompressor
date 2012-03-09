@@ -80,6 +80,11 @@
             <param-value>memory</param-value>
         </init-param>
         <init-param>
+            <description>缓存器的实现,默认为SimpleCacheManager</description>
+            <param-name>cacheManager</param-name>
+            <param-value>com.log4ic.compressor.cache.impl.memcached.MemcachedCacheManager</param-value>
+        </init-param>
+        <init-param>
             <description>压缩后的缓存文件目录,{contextPath}为项目目录</description>
             <param-name>cacheDir</param-name>
             <param-value>{contextPath}/static/compressed/</param-value>
