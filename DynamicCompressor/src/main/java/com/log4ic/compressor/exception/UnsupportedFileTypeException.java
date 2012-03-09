@@ -26,7 +26,7 @@ package com.log4ic.compressor.exception;
 
 /**
  * @author 张立鑫 IntelligentCode
- * @date 12-3-4
+ * @since 2012-03-04
  */
 public class UnsupportedFileTypeException extends CompressionException{
     public UnsupportedFileTypeException() {

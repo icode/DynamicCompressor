@@ -669,8 +669,8 @@ public class Compressor {
      * @throws com.google.common.css.compiler.ast.GssParserException
      *
      */
-    private static String buildCode(FileType type,
-                                    String queryString, @Nullable CacheManager cacheManager,
+    private static String buildCode(final FileType type,
+                                    final String queryString, @Nullable final CacheManager cacheManager,
                                     HttpServletRequest request, HttpServletResponse response,
                                     String fileDomain) throws CompressionException, GssParserException {
         Cache cache = null;
@@ -704,14 +704,31 @@ public class Compressor {
                 //压缩
                 code = HttpUtils.getBooleanParam(request, "nocompress") ? code : compressCode(codeList, request, type);
                 if (cacheManager != null) {
-                    cacheManager.put(queryString, code, type);
+                    //开启线程，放入缓存，提高响应速度
+                    final String finalCode = code;
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                cacheManager.put(queryString, finalCode, type);
+                            } finally {
+                                Lock cacheLock;
+                                synchronized (progressCacheLock) {
+                                    cacheLock = progressCacheLock.get(queryString);
+                                    progressCacheLock.remove(queryString);
+                                }
+                                if (cacheLock != null) {
+                                    cacheLock.unlock();
+                                }
+                            }
+                        }
+                    }).run();
                 }
                 return code;
             } else {
                 return cache.getContent().getContent();
             }
-
-        } finally {
+        } catch (Exception e) {
             if (cacheManager != null) {
                 Lock cacheLock;
                 synchronized (progressCacheLock) {
@@ -722,6 +739,7 @@ public class Compressor {
                     cacheLock.unlock();
                 }
             }
+            throw new CompressionException(e);
         }
     }
 

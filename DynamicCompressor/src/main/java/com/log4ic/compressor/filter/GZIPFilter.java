@@ -28,9 +28,8 @@ import javax.servlet.*;
 import java.io.IOException;
 
 /**
- * @author: 张立鑫
- * @version: 1
- * @date: 11-11-30 下午3:39
+ * @author 张立鑫
+ * @since 2011-11-03
  */
 public class GZIPFilter implements Filter {
     public void init(FilterConfig filterConfig) throws ServletException {

@@ -22,8 +22,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.log4ic.compressor.cache;
+package com.log4ic.compressor.cache.impl.simple;
 
+import com.log4ic.compressor.cache.CacheContent;
+import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.utils.ByteArrayUtils;
 import com.log4ic.compressor.utils.Compressor;

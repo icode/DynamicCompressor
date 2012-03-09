@@ -25,8 +25,9 @@
 package com.log4ic.compressor.servlet;
 
 import com.google.common.css.compiler.ast.GssParserException;
+import com.log4ic.compressor.cache.CacheManager;
 import com.log4ic.compressor.cache.CacheType;
-import com.log4ic.compressor.cache.SimpleCacheManager;
+import com.log4ic.compressor.cache.impl.simple.SimpleCacheManager;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.exception.CompressionException;
 import com.log4ic.compressor.exception.QueryStringEmptyException;
@@ -44,6 +45,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * JS CSS 压缩器Servlet
@@ -52,7 +55,7 @@ import java.io.PrintWriter;
  */
 public class CompressionServlet extends HttpServlet {
 
-    private static SimpleCacheManager cacheManager = null;
+    private static CacheManager cacheManager = null;
     private static boolean initialized = false;
     private static String fileDomain = null;
     private static Logger logger = LoggerFactory.getLogger(CompressionServlet.class);
@@ -145,7 +148,19 @@ public class CompressionServlet extends HttpServlet {
                 String fileDomain = config.getInitParameter("fileDomain");
 
                 if (StringUtils.isNotBlank(fileDomain)) {
-                    this.fileDomain = fileDomain;
+                    CompressionServlet.fileDomain = fileDomain;
+                }
+
+                Class cacheManagerClass = null;
+                String cacheManagerClassStr = config.getInitParameter("cacheManager");
+                if (StringUtils.isNotBlank(cacheManagerClassStr)) {
+                    try {
+                        cacheManagerClass = this.getClass().getClassLoader().loadClass(cacheManagerClassStr);
+                    } catch (ClassNotFoundException e) {
+                        logger.error("缓存管理器配置错误!", e);
+                    }
+                } else {
+                    cacheManagerClass = SimpleCacheManager.class;
                 }
 
                 if (autoClean) {
@@ -175,17 +190,35 @@ public class CompressionServlet extends HttpServlet {
                     }
                     if (cacheType != null) {
                         try {
-                            cacheManager = new SimpleCacheManager(cacheType, cacheCount, lowHit, cleanHourAgo, cleanInterval, cacheDir);
-                        } catch (CacheException e) {
-                            new CompressionException("初始化缓存管理器错误", e).printStackTrace();
+                            Constructor constructor = cacheManagerClass.getConstructor(CacheType.class, int.class, int.class, int.class, long.class, String.class);
+                            cacheManager = (CacheManager) constructor.newInstance(cacheType, cacheCount, lowHit, cleanHourAgo, cleanInterval, cacheDir);
+                        } catch (NoSuchMethodException e) {
+                            logger.error("初始化缓存管理器错误", e);
+                        } catch (InvocationTargetException e) {
+                            e.printStackTrace();
+                        } catch (InstantiationException e) {
+                            logger.error("初始化缓存管理器错误", e);
+                        } catch (IllegalAccessException e) {
+                            logger.error("初始化缓存管理器错误", e);
+                        } catch (Exception e) {
+                            logger.error("初始化缓存管理器错误", e);
                         }
                     }
                 } else {
                     if (cacheType != null) {
                         try {
-                            cacheManager = new SimpleCacheManager(cacheType, cacheCount, cacheDir);
-                        } catch (CacheException e) {
-                            new CompressionException("初始化缓存管理器错误", e).printStackTrace();
+                            Constructor constructor = cacheManagerClass.getConstructor(CacheType.class, int.class, String.class);
+                            cacheManager = (CacheManager) constructor.newInstance(cacheType, cacheCount, cacheDir);
+                        } catch (NoSuchMethodException e) {
+                            logger.error("初始化缓存管理器错误", e);
+                        } catch (InvocationTargetException e) {
+                            e.printStackTrace();
+                        } catch (InstantiationException e) {
+                            logger.error("初始化缓存管理器错误", e);
+                        } catch (IllegalAccessException e) {
+                            logger.error("初始化缓存管理器错误", e);
+                        } catch (Exception e) {
+                            logger.error("初始化缓存管理器错误", e);
                         }
                     }
                 }
