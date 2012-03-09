@@ -34,7 +34,7 @@ import java.util.Map;
 
 /**
  * @author 张立鑫 IntelligentCode
- * @date 12-3-6
+ * @since 2012-03-06
  */
 public class ExtendedPassRunner extends PassRunner {
     public ExtendedPassRunner(JobDescription job, ErrorManager errorManager) {
