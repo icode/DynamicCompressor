@@ -83,7 +83,7 @@
         <dependency>
             <groupId>com.log4ic.compressor</groupId>
             <artifactId>dynamic-compressor</artifactId>
-            <version>1.0.1</version>
+            <version>LATEST</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
