@@ -104,7 +104,7 @@ public interface CacheManager extends Serializable {
      *
      * @return
      */
-    public CacheType getCacheType() ;
+    public CacheType getCacheType();
 
     /**
      * 获取最大缓存数目
@@ -126,4 +126,11 @@ public interface CacheManager extends Serializable {
      * @return
      */
     public Date getCreateDate();
+
+    /**
+     * 获取缓存数目
+     *
+     * @return int
+     */
+    public int getCacheSize();
 }

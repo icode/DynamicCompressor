@@ -24,15 +24,21 @@
 
 package com.log4ic.compressor.cache.impl.memcached;
 
+import com.log4ic.compressor.cache.AbstractCacheManager;
+import com.log4ic.compressor.cache.Cache;
 import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.cache.impl.simple.SimpleCacheManager;
+import com.log4ic.compressor.utils.Compressor;
+
+import java.util.Date;
+import java.util.List;
 
 /**
  * @author 张立鑫 IntelligentCode
  * @since 2012-03-09
  */
-public class MemcachedCacheManager extends SimpleCacheManager{
+public class MemcachedCacheManager extends AbstractCacheManager {
     public MemcachedCacheManager(CacheType cacheType, int cacheCount, String dir) throws CacheException {
         super(cacheType, cacheCount, dir);
     }
@@ -41,5 +47,54 @@ public class MemcachedCacheManager extends SimpleCacheManager{
         super(cacheType, cacheCount, autoCleanHitTimes, autoCleanHourAgo, autoCleanInterval, dir);
     }
 
+    @Override
+    public Date getCreateDate() {
+        return super.getCreateDate();
+    }
+
+    @Override
+    public int getCacheSize() {
+        return 0;
+    }
+
+    @Override
+    public Cache put(String key, String value, Compressor.FileType fileType) {
+        return null;
+    }
+
+    @Override
+    public Cache remove(String key) {
+        return null;
+    }
+
+    @Override
+    public Cache removeLowCache() {
+        return null;
+    }
+
+    @Override
+    public List<Cache> removeLowCache(int hitTimes) {
+        return super.removeLowCache(hitTimes);
+    }
+
+    @Override
+    public List<Cache> removeLowCache(int hitTimes, Date date) {
+        return null;
+    }
+
+    @Override
+    public Cache get(String key) {
+        return null;
+    }
+
+    @Override
+    public boolean containsKey(String key) {
+        return false;
+    }
+
+    @Override
+    public boolean containsValue(Cache value) {
+        return false;
+    }
 
 }

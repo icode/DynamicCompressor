@@ -24,10 +24,7 @@
 
 package com.log4ic.compressor.cache.impl.simple;
 
-import com.log4ic.compressor.cache.Cache;
-import com.log4ic.compressor.cache.CacheContent;
-import com.log4ic.compressor.cache.CacheManager;
-import com.log4ic.compressor.cache.CacheType;
+import com.log4ic.compressor.cache.*;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.utils.Compressor;
 import com.log4ic.compressor.utils.FileUtils;
@@ -43,59 +40,15 @@ import java.util.*;
  *
  * @author 张立鑫 IntelligentCode
  */
-public class SimpleCacheManager implements Serializable, CacheManager {
-    private CacheType cacheType;
-    private Integer maxCacheCount;
-    private String cacheDir;
+public class SimpleCacheManager extends AbstractCacheManager implements Serializable {
     private Map<String, Cache> cache = new FastMap<String, Cache>();
-    private Date createDate;
-    private Timer clearCacheTimer;
 
-    /**
-     * 缓存管理器
-     *
-     * @param cacheType  缓存类型
-     * @param cacheCount 缓存最大数目
-     * @param dir        本地缓存文件存放位置
-     * @throws com.log4ic.compressor.cache.exception.CacheException
-     */
     public SimpleCacheManager(CacheType cacheType, int cacheCount, String dir) throws CacheException {
-        if (cacheCount <= 0) {
-            throw new CacheException("最大缓存数目不能小于等于0");
-        }
-        this.cacheType = cacheType;
-        this.maxCacheCount = cacheCount;
-        this.cacheDir = FileUtils.appendSeparator(dir);
-        this.createDate = new Date();
+        super(cacheType, cacheCount, dir);
     }
 
-    /**
-     * @param cacheType         缓存类型
-     * @param cacheCount        缓存最大数目
-     * @param autoCleanHitTimes 自动清理命中低于多少的缓存
-     * @param autoCleanHourAgo  自动清理多少小时前的缓存
-     * @param autoCleanInterval 多久执行一次自动清理
-     * @param dir               本地缓存目录
-     * @throws com.log4ic.compressor.cache.exception.CacheException
-     */
     public SimpleCacheManager(CacheType cacheType, int cacheCount, final int autoCleanHitTimes, final int autoCleanHourAgo, long autoCleanInterval, String dir) throws CacheException {
-        this(cacheType, cacheCount, dir);
-        this.clearCacheTimer = new Timer();
-        this.clearCacheTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    if (cache.size() > 0) {
-                        Calendar calendar = Calendar.getInstance();
-                        calendar.add(Calendar.HOUR, -autoCleanHourAgo);
-                        removeLowCache(autoCleanHitTimes, calendar.getTime());
-                        System.gc();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }, 0, autoCleanInterval);
+        super(cacheType, cacheCount, autoCleanHitTimes, autoCleanHourAgo, autoCleanInterval, dir);
     }
 
 
@@ -111,7 +64,7 @@ public class SimpleCacheManager implements Serializable, CacheManager {
             return null;
         }
         PrivateSetCache cCache = new PrivateSetCache();
-        cCache.setCacheType(this.cacheType);
+        cCache.setCacheType(this.getCacheType());
         //建立缓存内容
         cCache.setContent(content);
         cCache.setKey(key);
@@ -126,6 +79,7 @@ public class SimpleCacheManager implements Serializable, CacheManager {
      * @param fileType 文件类型
      * @return CacheContent
      * @throws com.log4ic.compressor.cache.exception.CacheException
+     *
      */
     private CacheContent createCacheContent(String key, String value, Compressor.FileType fileType) throws CacheException {
         return new SimpleCacheContent(key, value, this.cacheType, fileType, this.cacheDir);
@@ -346,6 +300,11 @@ public class SimpleCacheManager implements Serializable, CacheManager {
      */
     public Date getCreateDate() {
         return createDate;
+    }
+
+    @Override
+    public int getCacheSize() {
+        return cache.size();
     }
 
     /**
