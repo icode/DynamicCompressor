@@ -69,7 +69,6 @@ public class MemcachedCacheManager extends AbstractCacheManager {
 
     @Override
     public Cache remove(String key) {
-
         return null;
     }
 

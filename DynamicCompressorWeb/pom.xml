@@ -81,6 +81,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.0.0</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>com.log4ic.compressor</groupId>
             <artifactId>dynamic-compressor</artifactId>
             <version>LATEST</version>
