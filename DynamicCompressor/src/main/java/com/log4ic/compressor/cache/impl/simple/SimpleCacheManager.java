@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.Serializable;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * 缓存管理器
@@ -256,8 +257,8 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
                 @Override
                 public void run() {
 //                    synchronized (finalSCache) {
-                        finalSCache.setHitTimes(finalSCache.getHitTimes() + 1);
-                        finalSCache.setLastVisitDate(new Date());
+                    finalSCache.setHitTimes(finalSCache.getHitTimes() + 1);
+                    finalSCache.setLastVisitDate(new Date());
 //                    }
                 }
             });
@@ -324,6 +325,15 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
     @Override
     public int getCacheSize() {
         return cache.size();
+    }
+
+    @Override
+    public void markExpiredCache(Pattern pattern) {
+        for (String key : this.cache.keySet()) {
+            if (pattern.matcher(key).matches()) {
+                this.get(key).setExpired(true);
+            }
+        }
     }
 
     /**

@@ -25,12 +25,12 @@
 package com.log4ic.compressor.cache;
 
 import com.log4ic.compressor.cache.exception.CacheException;
-import com.log4ic.compressor.utils.Compressor;
 import com.log4ic.compressor.utils.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * @author 张立鑫 IntelligentCode
@@ -139,5 +139,14 @@ public abstract class AbstractCacheManager implements CacheManager {
      */
     public Date getCreateDate() {
         return createDate;
+    }
+
+    /**
+     * 根据正则表达式匹配key，区分大小写,标记过期缓存
+     *
+     * @param regex
+     */
+    public void markExpiredCache(String regex) {
+        this.markExpiredCache(Pattern.compile(regex));
     }
 }

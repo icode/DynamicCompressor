@@ -28,11 +28,11 @@ import com.log4ic.compressor.cache.AbstractCacheManager;
 import com.log4ic.compressor.cache.Cache;
 import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
-import com.log4ic.compressor.cache.impl.simple.SimpleCacheManager;
 import com.log4ic.compressor.utils.Compressor;
 
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * @author 张立鑫 IntelligentCode
@@ -58,12 +58,18 @@ public class MemcachedCacheManager extends AbstractCacheManager {
     }
 
     @Override
+    public void markExpiredCache(Pattern pattern) {
+
+    }
+
+    @Override
     public Cache put(String key, String value, Compressor.FileType fileType) {
         return null;
     }
 
     @Override
     public Cache remove(String key) {
+
         return null;
     }
 

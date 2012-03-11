@@ -24,12 +24,12 @@
 
 package com.log4ic.compressor.cache;
 
-import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.utils.Compressor;
-import javolution.util.FastList;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * 缓存管理器接口
@@ -133,4 +133,11 @@ public interface CacheManager extends Serializable {
      * @return int
      */
     public int getCacheSize();
+
+    /**
+     * 根据正则匹配key,标记过期缓存
+     *
+     * @param pattern
+     */
+    public void markExpiredCache(Pattern pattern);
 }
