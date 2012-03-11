@@ -27,9 +27,10 @@ package com.log4ic.compressor.cache.impl.simple;
 import com.log4ic.compressor.cache.*;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.utils.Compressor;
-import com.log4ic.compressor.utils.FileUtils;
 import javolution.util.FastList;
 import javolution.util.FastMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.Serializable;
@@ -42,6 +43,8 @@ import java.util.*;
  */
 public class SimpleCacheManager extends AbstractCacheManager implements Serializable {
     private Map<String, Cache> cache = new FastMap<String, Cache>();
+
+    private static final Logger logger = LoggerFactory.getLogger(SimpleCacheManager.class);
 
     public SimpleCacheManager(CacheType cacheType, int cacheCount, String dir) throws CacheException {
         super(cacheType, cacheCount, dir);
@@ -120,7 +123,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
         try {
             content = this.createCacheContent(key, value, fileType);
         } catch (CacheException e) {
-            e.printStackTrace();
+            logger.error("创建缓存内容失败", e);
         }
         if (content != null) {
             //建立缓存
@@ -224,7 +227,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      * @param key 键
      * @return Cache
      */
-    public Cache get(String key) {
+    public Cache get(final String key) {
         PrivateSetCache sCache = (PrivateSetCache) this.cache.get(key);
         if (sCache == null) {
             // 查看缓存文件是否存在
@@ -232,16 +235,32 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
             try {
                 content = SimpleCacheContent.createFromCacheFile(key, this.cacheType, this.cacheDir);
             } catch (CacheException e) {
-                e.printStackTrace();
+                logger.error("从文件创建缓存内容失败", e);
             }
             if (content != null) {
-                sCache = createCache(key, content);
-                this.putCache(key, sCache);
+                final SimpleCacheManager manager = this;
+                final CacheContent finalContent = content;
+                //异步的进行缓存设置
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        manager.putCache(key, createCache(key, finalContent));
+                    }
+                });
             }
         }
+
         if (sCache != null) {
-            sCache.setHitTimes(sCache.getHitTimes() + 1);
-            sCache.setLastVisitDate(new Date());
+            final PrivateSetCache finalSCache = sCache;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+//                    synchronized (finalSCache) {
+                        finalSCache.setHitTimes(finalSCache.getHitTimes() + 1);
+                        finalSCache.setLastVisitDate(new Date());
+//                    }
+                }
+            });
         }
         return sCache;
     }
