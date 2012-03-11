@@ -797,13 +797,10 @@ public class Compressor {
         }
 
         //这里是为了减少同步带来的性能消耗，将线程同步全部放在耗时操作内，在此块进行线程同步过滤
-        if (cache == null) {
+        if (cache == null || cache.isExpired()) {
             //进行构建代码
             code = buildCode(type, queryString, cacheManager, request, response, fileDomain);
-        }
-
-        //从缓存中解析内容
-        if (cacheManager != null && cache != null) {
+        }else {
             CacheContent cacheContent = cache.getContent();
             code = cacheContent.getContent();
         }

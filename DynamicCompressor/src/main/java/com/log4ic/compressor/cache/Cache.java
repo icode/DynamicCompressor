@@ -69,4 +69,18 @@ public interface Cache extends Serializable {
      * 移除该缓存
      */
     public void remove();
+
+    /**
+     * 获取缓存是否过期
+     *
+     * @return boolean
+     */
+    public boolean isExpired();
+
+    /**
+     * 设置缓存是否过期
+     *
+     * @param expired
+     */
+    public void setExpired(boolean expired);
 }

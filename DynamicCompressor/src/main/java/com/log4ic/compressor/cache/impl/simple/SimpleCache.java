@@ -62,6 +62,10 @@ public class SimpleCache implements Serializable, Cache {
      */
     protected String key;
 
+    /**
+     * 缓存是否过期     */
+    protected boolean isExpired = false;
+
     public Date getLastVisitDate() {
         return lastVisitDate;
     }
@@ -90,5 +94,15 @@ public class SimpleCache implements Serializable, Cache {
         if (this.content != null) {
             this.getContent().remove();
         }
+    }
+
+    @Override
+    public boolean isExpired() {
+        return this.isExpired;
+    }
+
+    @Override
+    public void setExpired(boolean expired) {
+        this.isExpired = expired;
     }
 }
