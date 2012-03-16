@@ -22,26 +22,50 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.log4ic.compressor.exception;
-
-/**
- * @author 张立鑫 IntelligentCode
- * @since 2012-03-04
- */
-public class UnsupportedFileTypeException extends CompressionException {
-    public UnsupportedFileTypeException() {
-        super("Unsupported file type exception,URI Error.");
+[
+    {
+        "regex":"iphone",
+        "identity":"iPhone"
+    },
+    {
+        "regex":"ipod",
+        "identity":"iPod"
+    },
+    {
+        "regex":"ipad",
+        "identity":"iPad"
+    },
+    {
+        "regex":"mac",
+        "identity":"Mac"
+    },
+    {
+        "regex":"adobeair",
+        "identity":"AdobeAIR"
+    },
+    {
+        "regex":"win",
+        "identity":"Windows"
+    },
+    {
+        "regex":"blackberry",
+        "identity":"Blackberry"
+    },
+    {
+        "regex":"android",
+        "identity":"Android"
+    },
+    /*核心放在最后*/
+    {
+        "regex":"mobile",
+        "identity":"Mobile"
+    },
+    {
+        "regex":"linux",
+        "identity":"Linux"
+    },
+    {
+        "regex":"unix",
+        "identity":"unix"
     }
-
-    public UnsupportedFileTypeException(String message) {
-        super(message);
-    }
-
-    public UnsupportedFileTypeException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public UnsupportedFileTypeException(Throwable cause) {
-        super(cause);
-    }
-}
+]

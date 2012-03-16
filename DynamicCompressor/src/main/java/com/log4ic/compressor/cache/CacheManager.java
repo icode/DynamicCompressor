@@ -28,7 +28,6 @@ import com.log4ic.compressor.utils.Compressor;
 
 import java.io.Serializable;
 import java.util.Date;
-import java.util.List;
 import java.util.regex.Pattern;
 
 /**
@@ -37,7 +36,7 @@ import java.util.regex.Pattern;
  * @author 张立鑫 IntelligentCode
  */
 public interface CacheManager extends Serializable {
-    public Cache put(String key, String value, Compressor.FileType fileType);
+    public void put(String key, String value, Compressor.FileType fileType);
 
 
     /**
@@ -47,32 +46,33 @@ public interface CacheManager extends Serializable {
      * @return
      */
 
-    public Cache remove(String key);
-
-    /**
-     * 移除命中率最低的一个缓存 最近最少算法（Least Recently Used，LRU）
-     *
-     * @return
-     */
-    public Cache removeLowCache();
+    public void remove(String key);
 
 
-    /**
-     * 按照命中次数移除缓存,低于等于此标准的缓存会被移除
-     *
-     * @param hitTimes 命中次数
-     * @return List<Cache>
-     */
-    public List<Cache> removeLowCache(int hitTimes);
+//    /**
+//     * 移除命中率最低的一个缓存 最近最少算法（Least Recently Used，LRU）
+//     *
+//     * @return
+//     */
+//    public Cache removeLowCache();
 
-    /**
-     * 按照命中次数和最后命中时间移除缓存,低于等于此标准的缓存会被移除
-     *
-     * @param hitTimes 命中次数
-     * @param date     时间
-     * @return List<Cache>
-     */
-    public List<Cache> removeLowCache(int hitTimes, Date date);
+
+//    /**
+//     * 按照命中次数移除缓存,低于等于此标准的缓存会被移除
+//     *
+//     * @param hitTimes 命中次数
+//     * @return List<Cache>
+//     */
+//    public List<Cache> removeLowCache(int hitTimes);
+
+//    /**
+//     * 按照命中次数和最后命中时间移除缓存,低于等于此标准的缓存会被移除
+//     *
+//     * @param hitTimes 命中次数
+//     * @param date     时间
+//     * @return List<Cache>
+//     */
+//    public List<Cache> removeLowCache(int hitTimes, Date date);
 
 
     /**
@@ -91,13 +91,13 @@ public interface CacheManager extends Serializable {
      */
     public boolean containsKey(String key);
 
-    /**
-     * 缓存内是否包含此值
-     *
-     * @param value 值
-     * @return
-     */
-    public boolean containsValue(Cache value);
+//    /**
+//     * 缓存内是否包含此值
+//     *
+//     * @param value 值
+//     * @return
+//     */
+//    public boolean containsValue(Cache value);
 
     /**
      * 获取缓存类型

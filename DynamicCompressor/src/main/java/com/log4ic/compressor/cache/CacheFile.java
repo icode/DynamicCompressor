@@ -25,7 +25,6 @@
 package com.log4ic.compressor.cache;
 
 import com.log4ic.compressor.utils.Compressor;
-import com.log4ic.compressor.utils.FileUtils;
 
 import java.io.File;
 import java.io.Serializable;
@@ -37,7 +36,7 @@ import java.io.Serializable;
  */
 public interface CacheFile extends Serializable {
 
-    public File getCacheFile();
+    public File getFile();
 
     public Compressor.FileType getFileType();
 

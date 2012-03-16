@@ -25,11 +25,14 @@
 package com.log4ic.compressor.cache.impl.simple;
 
 import com.log4ic.compressor.cache.CacheContent;
+import com.log4ic.compressor.cache.CacheFile;
 import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.utils.ByteArrayUtils;
 import com.log4ic.compressor.utils.Compressor;
 import com.log4ic.compressor.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.Serializable;
@@ -43,13 +46,16 @@ import java.security.NoSuchAlgorithmException;
  * @author 张立鑫 IntelligentCode
  */
 public class SimpleCacheContent implements Serializable, CacheContent {
-    private CacheType cacheType;
-    private String content = null;
-    private SimpleCacheFile cacheFile;
-    private String cacheDir;
-    private String key;
 
-    private SimpleCacheContent(String key, CacheType type, String dir) {
+    private static final Logger logger = LoggerFactory.getLogger(SimpleCacheContent.class);
+
+    protected CacheType cacheType;
+    protected String content = null;
+    protected CacheFile cacheFile;
+    protected String cacheDir;
+    protected String key;
+
+    protected SimpleCacheContent(String key, CacheType type, String dir) {
         this.cacheType = type;
         this.cacheDir = FileUtils.appendSeparator(dir);
         this.key = key;
@@ -70,24 +76,35 @@ public class SimpleCacheContent implements Serializable, CacheContent {
         this.cacheFile = new SimpleCacheFile(file, fileType);
     }
 
-    public SimpleCacheContent(String key, SimpleCacheFile file, CacheType type, String dir) {
+    public SimpleCacheContent(String key, CacheFile file, CacheType type, String dir) {
         this(key, type, dir);
         this.cacheFile = file;
     }
 
-    public static SimpleCacheContent createFromCacheFile(String key, CacheType cacheType, String dir) throws CacheException {
-        SimpleCacheFile file = lookupCacheFile(key, dir);
+    public SimpleCacheContent() {
+    }
+
+    public static CacheContent createFromCacheFile(String key, CacheType cacheType, String dir) throws CacheException {
+        CacheFile file = lookupCacheFile(key, dir);
         if (file != null) {
             return new SimpleCacheContent(key, file, cacheType, dir);
         }
         return null;
     }
 
-    private String readContent() {
+    public static CacheContent createFromCacheFile(String key, CacheType cacheType, Compressor.FileType fileType, String dir) throws CacheException {
+        CacheFile file = findCacheFile(key, fileType, dir);
+        if (file != null) {
+            return new SimpleCacheContent(key, file, cacheType, dir);
+        }
+        return null;
+    }
+
+    protected String readContent() {
         return this.cacheFile.readContent();
     }
 
-    private static String encodeFileName(String name) throws CacheException {
+    protected static String encodeFileName(String name) throws CacheException {
         MessageDigest md = null;
         //用MD5编码参数作为缓存文件名称
         try {
@@ -98,7 +115,9 @@ public class SimpleCacheContent implements Serializable, CacheContent {
         //MD5
         byte[] results = new byte[0];
         try {
-            results = md.digest(name.getBytes("UTF-8"));
+            if (md != null) {
+                results = md.digest(name.getBytes("UTF-8"));
+            }
         } catch (UnsupportedEncodingException e) {
             throw new CacheException("编码格式转换失败", e);
         }
@@ -109,17 +128,25 @@ public class SimpleCacheContent implements Serializable, CacheContent {
     /**
      * 将缓存写入文件，如果文件存在则直接返回该文件
      *
+     * @param content
+     * @param fileType
      * @return
+     * @throws com.log4ic.compressor.cache.exception.CacheException
+     *
      */
-    private SimpleCacheFile writeContent(String content, Compressor.FileType fileType) throws CacheException {
+    protected CacheFile writeContent(String content, Compressor.FileType fileType) throws CacheException {
 
-        SimpleCacheFile file = findCacheFile(this.key, fileType, this.cacheDir);
+        logger.debug("尝试写入缓存文件....");
+        CacheFile file = findCacheFile(this.key, fileType, this.cacheDir);
 
         if (file.exists()) {
+            logger.debug("缓存文件已经存在!");
             return file;
         }
 
-        return new SimpleCacheFile(FileUtils.writeFile(content, file.getPath()), fileType);
+        File f = FileUtils.writeFile(content, file.getPath());
+        logger.debug("写入缓存文件完毕!");
+        return new SimpleCacheFile(f, fileType);
     }
 
     /**
@@ -138,8 +165,10 @@ public class SimpleCacheContent implements Serializable, CacheContent {
      * @param fileType
      * @param dir
      * @return
+     * @throws com.log4ic.compressor.cache.exception.CacheException
+     *
      */
-    public static SimpleCacheFile findCacheFile(String key, Compressor.FileType fileType, String dir) throws CacheException {
+    public static CacheFile findCacheFile(String key, Compressor.FileType fileType, String dir) throws CacheException {
         String type = fileType.name().toLowerCase();
 
         String filePath = dir + type + File.separator + encodeFileName(key) + "." + type;
@@ -155,12 +184,14 @@ public class SimpleCacheContent implements Serializable, CacheContent {
      * @param key
      * @param dir
      * @return
+     * @throws com.log4ic.compressor.cache.exception.CacheException
+     *
      */
-    public static SimpleCacheFile lookupCacheFile(String key, String dir) throws CacheException {
+    public static CacheFile lookupCacheFile(String key, String dir) throws CacheException {
         Compressor.FileType[] types = Compressor.FileType.values();
 
         for (Compressor.FileType type : types) {
-            SimpleCacheFile file = findCacheFile(key, type, dir);
+            CacheFile file = findCacheFile(key, type, dir);
             if (file.exists()) {
                 return file;
             }
@@ -192,7 +223,7 @@ public class SimpleCacheContent implements Serializable, CacheContent {
         return cacheType;
     }
 
-    public SimpleCacheFile getCacheFile() {
+    public CacheFile getCacheFile() {
         return cacheFile;
     }
 

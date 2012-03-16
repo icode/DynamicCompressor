@@ -51,7 +51,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -670,7 +669,7 @@ public class Compressor {
      *
      */
     private static String buildCode(final FileType type,
-                                    final String queryString, @Nullable final CacheManager cacheManager,
+                                    final String queryString, final CacheManager cacheManager,
                                     HttpServletRequest request, HttpServletResponse response,
                                     String fileDomain) throws CompressionException, GssParserException {
         Cache cache = null;
@@ -698,7 +697,10 @@ public class Compressor {
             }
             String code = null;
             //再次验证cache，如果是等待中的线程则不会再压缩
-            if (cache == null) {
+            if (cache == null || cache.isExpired()) {
+                if (cache != null && cache.isExpired()) {
+                    cache.removeContent();
+                }
                 //获取参数的文件并合并
                 List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type, fileDomain);
                 //压缩
@@ -756,7 +758,7 @@ public class Compressor {
      *
      * @throws GssParserException
      */
-    public static void compress(HttpServletRequest request, HttpServletResponse response, @Nullable CacheManager cacheManager, String fileDomain) throws CompressionException, GssParserException {
+    public static void compress(HttpServletRequest request, HttpServletResponse response, CacheManager cacheManager, String fileDomain) throws CompressionException, GssParserException {
 
         String queryString = HttpUtils.getQueryString(request);
 
@@ -800,7 +802,7 @@ public class Compressor {
         if (cache == null || cache.isExpired()) {
             //进行构建代码
             code = buildCode(type, queryString, cacheManager, request, response, fileDomain);
-        }else {
+        } else {
             CacheContent cacheContent = cache.getContent();
             code = cacheContent.getContent();
         }

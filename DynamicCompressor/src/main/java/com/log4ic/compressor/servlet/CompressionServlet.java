@@ -28,7 +28,6 @@ import com.google.common.css.compiler.ast.GssParserException;
 import com.log4ic.compressor.cache.CacheManager;
 import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.impl.simple.SimpleCacheManager;
-import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.exception.CompressionException;
 import com.log4ic.compressor.exception.QueryStringEmptyException;
 import com.log4ic.compressor.exception.UnsupportedFileTypeException;
@@ -212,7 +211,7 @@ public class CompressionServlet extends HttpServlet {
                         } catch (NoSuchMethodException e) {
                             logger.error("初始化缓存管理器错误", e);
                         } catch (InvocationTargetException e) {
-                            e.printStackTrace();
+                            logger.error("初始化缓存管理器错误", e);
                         } catch (InstantiationException e) {
                             logger.error("初始化缓存管理器错误", e);
                         } catch (IllegalAccessException e) {

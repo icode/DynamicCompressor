@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  * @author 张立鑫 IntelligentCode
  */
 public class SimpleCacheManager extends AbstractCacheManager implements Serializable {
-    private Map<String, Cache> cache = new FastMap<String, Cache>();
+    protected Map<String, Cache> cache = new FastMap<String, Cache>();
 
     private static final Logger logger = LoggerFactory.getLogger(SimpleCacheManager.class);
 
@@ -59,19 +59,16 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
     /**
      * 建立缓存
      *
-     * @param key     键
      * @param content 值
      * @return
      */
-    private PrivateSetCache createCache(String key, CacheContent content) {
+    protected PrivateSetCache createCache(CacheContent content) {
         if (content == null) {
             return null;
         }
         PrivateSetCache cCache = new PrivateSetCache();
-        cCache.setCacheType(this.getCacheType());
         //建立缓存内容
         cCache.setContent(content);
-        cCache.setKey(key);
         return cCache;
     }
 
@@ -85,7 +82,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      * @throws com.log4ic.compressor.cache.exception.CacheException
      *
      */
-    private CacheContent createCacheContent(String key, String value, Compressor.FileType fileType) throws CacheException {
+    protected CacheContent createCacheContent(String key, String value, Compressor.FileType fileType) throws CacheException {
         return new SimpleCacheContent(key, value, this.cacheType, fileType, this.cacheDir);
     }
 
@@ -97,11 +94,11 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      * @param fileType 文件类型
      * @return CacheContent
      */
-    private CacheContent createCacheContent(String key, File file, Compressor.FileType fileType) {
+    protected CacheContent createCacheContent(String key, File file, Compressor.FileType fileType) {
         return new SimpleCacheContent(key, file, this.cacheType, fileType, this.cacheDir);
     }
 
-    private void putCache(String key, Cache cache) {
+    protected void putCache(String key, Cache cache) {
         //如果缓存超过预设最大限度则移除命中率最低的缓存
         if (this.cache.size() >= this.maxCacheCount) {
             this.removeLowCache();
@@ -118,7 +115,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      * @param fileType 文件类型
      * @return
      */
-    public Cache put(String key, String value, Compressor.FileType fileType) {
+    public void put(String key, String value, Compressor.FileType fileType) {
         //建立缓存内容
         CacheContent content = null;
         try {
@@ -128,11 +125,8 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
         }
         if (content != null) {
             //建立缓存
-            Cache cCache = this.createCache(key, content);
+            Cache cCache = this.createCache(content);
             this.putCache(key, cCache);
-            return cCache;
-        } else {
-            return null;
         }
     }
 
@@ -143,13 +137,11 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      * @param key
      * @return
      */
-
-    public Cache remove(String key) {
+    public void remove(String key) {
         Cache cache = this.cache.remove(key);
         if (cache != null) {
-            cache.remove();
+            cache.removeContent();
         }
-        return cache;
     }
 
     /**
@@ -157,7 +149,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      *
      * @return
      */
-    public Cache removeLowCache() {
+    public void removeLowCache() {
 
         Collection<Cache> cacheCollection = this.cache.values();
 
@@ -179,7 +171,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
             }
         });
         //移除命中率最低的缓存
-        return this.remove(values[0].getKey());
+        this.remove(values[0].getKey());
     }
 
 
@@ -239,15 +231,17 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
                 logger.error("从文件创建缓存内容失败", e);
             }
             if (content != null) {
+                sCache = this.createCache(content);
+
                 final SimpleCacheManager manager = this;
                 final CacheContent finalContent = content;
                 //异步的进行缓存设置
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        manager.putCache(key, createCache(key, finalContent));
+                        manager.putCache(key, createCache(finalContent));
                     }
-                });
+                }).run();
             }
         }
 
@@ -261,7 +255,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
                     finalSCache.setLastVisitDate(new Date());
 //                    }
                 }
-            });
+            }).run();
         }
         return sCache;
     }
@@ -329,11 +323,20 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
 
     @Override
     public void markExpiredCache(Pattern pattern) {
+        logger.debug("标记过期缓存...");
+        int i = 0;
         for (String key : this.cache.keySet()) {
             if (pattern.matcher(key).matches()) {
-                this.get(key).setExpired(true);
+//                this.remove(key);
+//                i++;
+                Cache cache = this.get(key);
+                if (!cache.isExpired()) {
+                    cache.setExpired(true);
+                    i++;
+                }
             }
         }
+        logger.debug("标记了" + i + "个过期缓存!");
     }
 
     /**
@@ -349,16 +352,8 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
             super.hitTimes = hitTimes;
         }
 
-        private void setCacheType(CacheType cacheType) {
-            super.cacheType = cacheType;
-        }
-
         private void setContent(CacheContent content) {
             super.content = content;
-        }
-
-        private void setKey(String key) {
-            super.key = key;
         }
     }
 }

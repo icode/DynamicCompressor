@@ -27,7 +27,7 @@ package com.log4ic.compressor.exception;
 /**
  * @author 张立鑫 IntelligentCode
  */
-public class QueryStringEmptyException extends CompressionException{
+public class QueryStringEmptyException extends CompressionException {
     public QueryStringEmptyException() {
         super("Compression query string empty.");
     }

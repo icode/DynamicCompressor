@@ -33,7 +33,7 @@ import java.io.File;
  * @author 张立鑫 IntelligentCode
  * @since 2012-03-09
  */
-public class MemcachedCacheFile extends SimpleCacheFile{
+public class MemcachedCacheFile extends SimpleCacheFile {
     public MemcachedCacheFile(File cacheFile, Compressor.FileType fileType) {
         super(cacheFile, fileType);
     }

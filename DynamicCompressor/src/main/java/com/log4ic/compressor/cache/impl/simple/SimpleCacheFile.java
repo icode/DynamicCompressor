@@ -45,7 +45,7 @@ public class SimpleCacheFile implements CacheFile, Serializable {
         this.fileType = fileType;
     }
 
-    public File getCacheFile() {
+    public File getFile() {
         return cacheFile;
     }
 

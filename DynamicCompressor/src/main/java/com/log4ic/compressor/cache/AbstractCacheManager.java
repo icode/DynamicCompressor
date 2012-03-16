@@ -102,8 +102,10 @@ public abstract class AbstractCacheManager implements CacheManager {
      * @return List<SimpleCache>
      */
     public List<Cache> removeLowCache(int hitTimes) {
-        return removeLowCache(hitTimes, new Date());
+        return this.removeLowCache(hitTimes, new Date());
     }
+
+    public abstract List<Cache> removeLowCache(int hitTimes, Date date);
 
     /**
      * 获取缓存类型

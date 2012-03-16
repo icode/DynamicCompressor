@@ -52,18 +52,10 @@ public class SimpleCache implements Serializable, Cache {
      * 缓存内容
      */
     protected CacheContent content;
-    /**
-     * 缓存类型
-     */
-    protected CacheType cacheType = CacheType.MEMORY;
 
     /**
-     * self key
+     * 缓存是否过期
      */
-    protected String key;
-
-    /**
-     * 缓存是否过期     */
     protected boolean isExpired = false;
 
     public Date getLastVisitDate() {
@@ -83,15 +75,15 @@ public class SimpleCache implements Serializable, Cache {
     }
 
     public CacheType getCacheType() {
-        return cacheType;
+        return this.getContent().getCacheType();
     }
 
     public String getKey() {
-        return key;
+        return this.getContent().getKey();
     }
 
-    public void remove() {
-        if (this.content != null) {
+    public void removeContent() {
+        if (this.getContent() != null) {
             this.getContent().remove();
         }
     }

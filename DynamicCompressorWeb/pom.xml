@@ -84,12 +84,82 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.0.0</version>
-            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.google.closure-stylesheets</groupId>
+            <artifactId>closure-stylesheets</artifactId>
+            <version>20120303</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.easymock</groupId>
+                    <artifactId>easymock</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>javacc</groupId>
+                    <artifactId>javacc</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.code.findbugs</groupId>
+                    <artifactId>jsr305</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.ant</groupId>
+                    <artifactId>ant</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>args4j</groupId>
+                    <artifactId>args4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>spy</groupId>
+            <artifactId>spymemcached</artifactId>
+            <version>2.8.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>spring-beans</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.log4ic.compressor</groupId>
             <artifactId>dynamic-compressor</artifactId>
             <version>LATEST</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>2.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>dom4j</groupId>
+            <artifactId>dom4j</artifactId>
+            <version>1.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>jaxen</groupId>
+            <artifactId>jaxen</artifactId>
+            <version>1.1.3</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>maven-plugins</groupId>
+                    <artifactId>maven-cobertura-plugin</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>maven-plugins</groupId>
+                    <artifactId>maven-findbugs-plugin</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

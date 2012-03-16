@@ -52,6 +52,10 @@ public class FileUtils {
         FileChannel outChannel = null;
         File file = new File(filePath);
 
+        if (file.exists()) {
+            file.delete();
+        }
+
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }

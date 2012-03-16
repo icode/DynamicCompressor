@@ -66,9 +66,9 @@ public interface Cache extends Serializable {
     public String getKey();
 
     /**
-     * 移除该缓存
+     * 移除该缓存内容
      */
-    public void remove();
+    public void removeContent();
 
     /**
      * 获取缓存是否过期
