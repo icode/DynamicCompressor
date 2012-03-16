@@ -1,0 +1,19 @@
+/**
+ * @author 张立鑫 IntelligentCode
+ * @since 2012-03-13
+ */
+option java_package = "com.log4ic.compressor.cache.impl.memcached.protobuf"; //生成文件的包名
+option java_outer_classname = "MemcachedCacheProtobuf"; //类名
+
+//缓存 为了减少大小选择了和JAVA对象背离的结构
+message MemcachedCache {
+    required string content = 1;
+    required string cacheFilePath = 2;
+    enum FileType {
+        JS = 0;
+        CSS = 1;
+        GSS = 2;
+    }
+    required FileType fileType = 3;
+    required int64 createDate = 4;
+}
