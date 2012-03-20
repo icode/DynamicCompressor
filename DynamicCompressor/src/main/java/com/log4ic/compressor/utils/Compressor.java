@@ -42,7 +42,7 @@ import com.log4ic.compressor.cache.CacheManager;
 import com.log4ic.compressor.exception.CompressionException;
 import com.log4ic.compressor.exception.QueryStringEmptyException;
 import com.log4ic.compressor.exception.UnsupportedFileTypeException;
-import com.log4ic.compressor.servlet.http.CompressionResponseWrapper;
+import com.log4ic.compressor.servlet.http.ContentResponseWrapper;
 import com.log4ic.compressor.utils.gss.GssFunctionMapProvider;
 import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
 import javolution.util.FastList;
@@ -422,7 +422,7 @@ public class Compressor {
      */
     public static List<SourceCode> mergeCode(String[] fileUrlList, HttpServletRequest request, HttpServletResponse response, FileType type, String fileDomain) throws CompressionException {
         List<SourceCode> codeList = new FastList<SourceCode>();
-        CompressionResponseWrapper wrapperResponse = null;
+        ContentResponseWrapper wrapperResponse = null;
         //获取参数的文件并合并
         for (String url : fileUrlList) {
             int index = url.lastIndexOf(".");
@@ -438,7 +438,7 @@ public class Compressor {
                     } else {
                         //否则视为同域
                         if (wrapperResponse == null) {
-                            wrapperResponse = new CompressionResponseWrapper(response);
+                            wrapperResponse = new ContentResponseWrapper(response);
                         }
                         request.getRequestDispatcher(url).include(request, wrapperResponse);
                         wrapperResponse.flushBuffer();

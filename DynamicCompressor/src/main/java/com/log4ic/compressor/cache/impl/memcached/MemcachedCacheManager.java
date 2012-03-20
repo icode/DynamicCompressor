@@ -29,12 +29,14 @@ import com.log4ic.compressor.cache.*;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.cache.impl.simple.SimpleCacheContent;
 import com.log4ic.compressor.utils.Compressor;
+import javolution.util.FastList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -85,7 +87,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
     public int getCacheSize() {
         try {
             List list = this.getKeyList();
-            return list == null ? 0 : list.size();
+            return list.size();
         } catch (CacheException e) {
             logger.error("获取键列表错误！", e);
             return 0;
@@ -98,27 +100,46 @@ public class MemcachedCacheManager extends AbstractCacheManager {
     @Override
     public void markExpiredCache(Pattern pattern) {
         logger.debug("标记过期缓存...");
-        int i = 0;
+        List<String> list = new FastList<String>();
         try {
             for (String key : this.getKeyList()) {
                 if (pattern.matcher(key).matches()) {
-//                    this.remove(key);
-//                    i++;
-                    Cache cache = this.get(key);
-                    if (cache != null) {
-                        if (!cache.isExpired()) {
-                            cache.setExpired(true);
-                            i++;
-                        }
-                    }
+                    list.add(key);
                 }
             }
         } catch (CacheException e) {
-            logger.error("获取缓存键列表失败", e);
+            logger.error("获取键列表失败", e);
         } catch (InvalidProtocolBufferException e) {
-            logger.error("获取缓存键列表失败", e);
+            logger.error("获取键列表失败", e);
         }
-        logger.debug("标记了" + i + "个过期缓存!");
+        if (list.size() > 0) {
+            Map<String, Object> map = null;
+            try {
+                map = MemcachedUtils.getBulk(list);
+            } catch (IOException e) {
+                logger.error("IOException", e);
+            }
+            if (map != null) {
+                for (String key : map.keySet()) {
+                    byte[] bytes = (byte[]) map.get(key);
+
+                    Cache cache = null;
+                    try {
+                        cache = new MemcachedCache(key, bytes, this.cacheType, this.cacheDir);
+                    } catch (CacheException e) {
+                        logger.error("转化缓存对象失败", e);
+                    } catch (InvalidProtocolBufferException e) {
+                        logger.error("转化缓存对象失败", e);
+                    }
+
+                    if (cache != null && !cache.isExpired()) {
+                        cache.setExpired(true);
+                    }
+                }
+            }
+        }
+
+        logger.debug("标记了" + list.size() + "个过期缓存!");
     }
 
 

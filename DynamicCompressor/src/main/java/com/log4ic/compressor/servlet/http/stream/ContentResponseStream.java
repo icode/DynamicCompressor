@@ -22,25 +22,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.log4ic.compressor.filter;
+package com.log4ic.compressor.servlet.http.stream;
 
-import javax.servlet.*;
+import javax.servlet.ServletOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 /**
- * @author 张立鑫
- * @since 2011-11-03
+ * @author 张立鑫 IntelligentCode
+ * @since 2012-03-20
  */
-public class GZIPFilter implements Filter {
-    public void init(FilterConfig filterConfig) throws ServletException {
+public class ContentResponseStream extends ServletOutputStream {
 
+    private ByteArrayOutputStream stream = new ByteArrayOutputStream();
+
+
+    @Override
+    public void write(int b) throws IOException {
+        stream.write(b);
     }
 
-    public void doFilter(ServletRequest servletRequest, ServletResponse response, FilterChain filterChain) throws IOException, ServletException {
-
+    public String getContent() throws UnsupportedEncodingException {
+        return this.getContent("UTF-8");
     }
 
-    public void destroy() {
+    public String getContent(String charsetName) throws UnsupportedEncodingException {
+        return stream == null ? null : stream.toString(charsetName);
+    }
 
+    public void reset(){
+        stream.reset();
     }
 }

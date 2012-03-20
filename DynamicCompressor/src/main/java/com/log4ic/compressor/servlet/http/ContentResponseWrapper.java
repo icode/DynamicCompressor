@@ -24,10 +24,11 @@
 
 package com.log4ic.compressor.servlet.http;
 
+import com.log4ic.compressor.servlet.http.stream.ContentResponseStream;
+
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -37,75 +38,51 @@ import java.io.UnsupportedEncodingException;
  *
  * @author 张立鑫 IntelligentCode
  */
-public class CompressionResponseWrapper extends HttpServletResponseWrapper {
-    private PrintWriter tmpWriter;
-    private ByteArrayOutputStream output;
-    private ByteArrayServletOutputStream servletOutput;
+public class ContentResponseWrapper extends HttpServletResponseWrapper {
+    private PrintWriter printWriter;
+    private ContentResponseStream servletOutput;
 
-    public CompressionResponseWrapper(HttpServletResponse httpServletResponse) {
+    public ContentResponseWrapper(HttpServletResponse httpServletResponse) throws IOException {
         super(httpServletResponse);
-        output = new ByteArrayOutputStream();
-        tmpWriter = new PrintWriter(output);
-        servletOutput = new ByteArrayServletOutputStream(output);
+        this.servletOutput = new ContentResponseStream();
+        this.printWriter = new PrintWriter(servletOutput);
     }
 
     public void finalize() throws Throwable {
         super.finalize();
         servletOutput.close();
-        output.close();
-        tmpWriter.close();
+        printWriter.close();
     }
 
-    public String getContent() {
-        try {
-            return output.toString("UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            return "UnsupportedEncoding";
-        }
+    public String getContent() throws UnsupportedEncodingException {
+        return servletOutput.getContent();
     }
 
-    public String getContent(String charsetName) {
-        try {
-            return output.toString(charsetName);
-        } catch (UnsupportedEncodingException e) {
-            return "UnsupportedEncoding";
-        }
+    public String getContent(String charsetName) throws UnsupportedEncodingException {
+        return servletOutput.getContent(charsetName);
     }
 
     public PrintWriter getWriter() throws IOException {
-        return tmpWriter;
+        return printWriter;
     }
 
     public ServletOutputStream getOutputStream() throws IOException {
         return servletOutput;
     }
 
-    public byte[] toByteArray() {
-        return output.toByteArray();
-    }
-
     public void flushBuffer() throws IOException {
-        tmpWriter.flush();
+        printWriter.flush();
         servletOutput.flush();
     }
 
     public void reset() {
-        output.reset();
+        super.reset();
+        servletOutput.reset();
     }
 
     public void close() throws IOException {
-        tmpWriter.close();
+        printWriter.close();
+        servletOutput.close();
     }
 
-    private static class ByteArrayServletOutputStream extends ServletOutputStream {
-        ByteArrayOutputStream byteArrayOutputStream;
-
-        public ByteArrayServletOutputStream(ByteArrayOutputStream baos) {
-            this.byteArrayOutputStream = baos;
-        }
-
-        public void write(int i) throws IOException {
-            byteArrayOutputStream.write(i);
-        }
-    }
 }

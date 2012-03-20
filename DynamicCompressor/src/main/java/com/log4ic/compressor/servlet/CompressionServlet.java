@@ -94,7 +94,7 @@ public class CompressionServlet extends HttpServlet {
     @Override
     public void init(ServletConfig config) throws ServletException {
         if (!initialized) {
-            String cacheDir = null;
+            String cacheDir;
             CacheType cacheType = null;
             Integer cacheCount = null;
             boolean autoClean = true;
@@ -119,7 +119,7 @@ public class CompressionServlet extends HttpServlet {
                     } catch (IllegalArgumentException e) {
                     }
                 }
-                if ("none".equals(cacheType)) {
+                if ("none".equals(cacheTypeStr)) {
                     cacheType = null;
                 }
                 //缓存数目
@@ -154,7 +154,7 @@ public class CompressionServlet extends HttpServlet {
                 String cacheManagerClassStr = config.getInitParameter("cacheManager");
                 if (StringUtils.isNotBlank(cacheManagerClassStr)) {
                     try {
-                        cacheManagerClass = this.getClass().getClassLoader().loadClass(cacheManagerClassStr);
+                        cacheManagerClass = CompressionServlet.class.getClassLoader().loadClass(cacheManagerClassStr);
                     } catch (ClassNotFoundException e) {
                         logger.error("缓存管理器配置错误!", e);
                     }
