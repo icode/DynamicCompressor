@@ -63,8 +63,7 @@ public class SimpleCacheManagerTest {
             //进行构建代码
             System.out.println("进行构建代码...");
         } else {
-            CacheContent cacheContent = cache.getContent();
-            String code = cacheContent.getContent();
+            String code = cache.getContent();
             System.out.println(cache.getKey() + ":从缓存取得代码...：" + code);
         }
     }

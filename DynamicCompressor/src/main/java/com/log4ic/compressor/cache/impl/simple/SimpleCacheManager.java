@@ -24,7 +24,10 @@
 
 package com.log4ic.compressor.cache.impl.simple;
 
-import com.log4ic.compressor.cache.*;
+import com.log4ic.compressor.cache.AbstractCacheManager;
+import com.log4ic.compressor.cache.Cache;
+import com.log4ic.compressor.cache.CacheFile;
+import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.utils.Compressor;
 import javolution.util.FastList;
@@ -32,7 +35,6 @@ import javolution.util.FastMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.Serializable;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -56,48 +58,6 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
     }
 
 
-    /**
-     * 建立缓存
-     *
-     * @param content 值
-     * @return
-     */
-    protected PrivateSetCache createCache(CacheContent content) {
-        if (content == null) {
-            return null;
-        }
-        PrivateSetCache cCache = new PrivateSetCache();
-        //建立缓存内容
-        cCache.setContent(content);
-        return cCache;
-    }
-
-    /**
-     * 建立缓存内容
-     *
-     * @param key      键
-     * @param value    值
-     * @param fileType 文件类型
-     * @return CacheContent
-     * @throws com.log4ic.compressor.cache.exception.CacheException
-     *
-     */
-    protected CacheContent createCacheContent(String key, String value, Compressor.FileType fileType) throws CacheException {
-        return new SimpleCacheContent(key, value, this.cacheType, fileType, this.cacheDir);
-    }
-
-    /**
-     * 建立缓存内容
-     *
-     * @param key      键
-     * @param file     值
-     * @param fileType 文件类型
-     * @return CacheContent
-     */
-    protected CacheContent createCacheContent(String key, File file, Compressor.FileType fileType) {
-        return new SimpleCacheContent(key, file, this.cacheType, fileType, this.cacheDir);
-    }
-
     protected void putCache(String key, Cache cache) {
         //如果缓存超过预设最大限度则移除命中率最低的缓存
         if (this.cache.size() >= this.maxCacheCount) {
@@ -116,18 +76,15 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      * @return
      */
     public void put(String key, String value, Compressor.FileType fileType) {
-        //建立缓存内容
-        CacheContent content = null;
+        //建立缓存
+        Cache cCache = null;
         try {
-            content = this.createCacheContent(key, value, fileType);
+            cCache = new PrivateSetCache(key, value, this.getCacheType(),
+                    fileType, this.getCacheDir());
         } catch (CacheException e) {
-            logger.error("创建缓存内容失败", e);
+            logger.error("建立缓存失败", e);
         }
-        if (content != null) {
-            //建立缓存
-            Cache cCache = this.createCache(content);
-            this.putCache(key, cCache);
-        }
+        this.putCache(key, cCache);
     }
 
 
@@ -224,22 +181,22 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
         PrivateSetCache sCache = (PrivateSetCache) this.cache.get(key);
         if (sCache == null) {
             // 查看缓存文件是否存在
-            CacheContent content = null;
+            Cache cache = null;
             try {
-                content = SimpleCacheContent.createFromCacheFile(key, this.cacheType, this.cacheDir);
+                cache = SimpleCache.createFromCacheFile(key, this.cacheType, this.cacheDir);
             } catch (CacheException e) {
                 logger.error("从文件创建缓存内容失败", e);
             }
-            if (content != null) {
-                sCache = this.createCache(content);
+            if (cache != null) {
+                sCache = (PrivateSetCache) cache;
 
                 final SimpleCacheManager manager = this;
-                final CacheContent finalContent = content;
+                final Cache finalCache = cache;
                 //异步的进行缓存设置
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        manager.putCache(key, createCache(finalContent));
+                        manager.putCache(key, finalCache);
                     }
                 }).run();
             }
@@ -344,16 +301,24 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      */
     private class PrivateSetCache extends SimpleCache {
 
+        protected PrivateSetCache(String key, CacheType type, String dir) {
+            super(key, type, dir);
+        }
+
+        public PrivateSetCache(String key, String content, CacheType type, Compressor.FileType fileType, String dir) throws CacheException {
+            super(key, content, type, fileType, dir);
+        }
+
+        public PrivateSetCache(String key, CacheFile file, CacheType type, String dir) {
+            super(key, file, type, dir);
+        }
+
         private void setLastVisitDate(Date lastVisitDate) {
             super.lastVisitDate = lastVisitDate;
         }
 
         private void setHitTimes(int hitTimes) {
             super.hitTimes = hitTimes;
-        }
-
-        private void setContent(CacheContent content) {
-            super.content = content;
         }
     }
 }

@@ -25,11 +25,15 @@
 package com.log4ic.compressor.cache.impl.memcached;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.log4ic.compressor.cache.*;
+import com.log4ic.compressor.cache.AbstractCacheManager;
+import com.log4ic.compressor.cache.Cache;
+import com.log4ic.compressor.cache.CacheFile;
+import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
-import com.log4ic.compressor.cache.impl.simple.SimpleCacheContent;
+import com.log4ic.compressor.cache.impl.simple.SimpleCache;
 import com.log4ic.compressor.utils.Compressor;
 import javolution.util.FastList;
+import net.spy.memcached.transcoders.LongTranscoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +51,9 @@ public class MemcachedCacheManager extends AbstractCacheManager {
 
     private static final Logger logger = LoggerFactory.getLogger(MemcachedCacheManager.class);
 
-    protected static final String MEMCACHED_KEY_LIST_NAME = "COMPRESSOR_CACHE_MANAGER_KEY_LIST";
+    protected static final String MEMCACHED_KEY_LIST_NAME = "COMPRESSOR_CACHE_MANAGER_KEY";
+
+    protected static final String MEMCACHED_KEY_LIST_SIZE_NAME = "COMPRESSOR_CACHE_MANAGER_KEY_LIST_SIZE";
 
 
     public MemcachedCacheManager(CacheType cacheType, int cacheCount, String dir) throws CacheException {
@@ -79,6 +85,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
      */
     protected List<String> getKeyList() throws CacheException, InvalidProtocolBufferException {
 
+
         return null;
     }
 
@@ -86,12 +93,12 @@ public class MemcachedCacheManager extends AbstractCacheManager {
     @Override
     public int getCacheSize() {
         try {
-            List list = this.getKeyList();
-            return list.size();
-        } catch (CacheException e) {
+            long size = MemcachedUtils.get(MEMCACHED_KEY_LIST_SIZE_NAME, new LongTranscoder());
+            return Integer.parseInt(size + "");
+        } catch (InvalidProtocolBufferException e) {
             logger.error("获取键列表错误！", e);
             return 0;
-        } catch (InvalidProtocolBufferException e) {
+        } catch (IOException e) {
             logger.error("获取键列表错误！", e);
             return 0;
         }
@@ -125,7 +132,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
 
                     Cache cache = null;
                     try {
-                        cache = new MemcachedCache(key, bytes, this.cacheType, this.cacheDir);
+                        cache = new MemcachedCache(key, this.cacheDir, this.cacheType, bytes);
                     } catch (CacheException e) {
                         logger.error("转化缓存对象失败", e);
                     } catch (InvalidProtocolBufferException e) {
@@ -147,23 +154,12 @@ public class MemcachedCacheManager extends AbstractCacheManager {
     public void put(final String key, final String value, final Compressor.FileType fileType) {
         final CacheType cacheType = this.cacheType;
         final String cacheDir = this.cacheDir;
-        final MemcachedCacheManager manager = this;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    MemcachedUtils.add(key, 0, new MemcachedCache(key, value, cacheType, fileType, cacheDir).toByteArray());
-//                    MemcachedCacheProtobuf.MemcachedCacheKeyList keyList = manager.getKeyListProtobuf();
-//                    MemcachedCacheProtobuf.MemcachedCacheKeyList.Builder builder;
-//                    if (keyList == null) {
-//                        builder = MemcachedCacheProtobuf.MemcachedCacheKeyList.newBuilder();
-//                    } else {
-//                        builder = keyList.toBuilder();
-//                    }
-//                    if (keyList == null || !keyList.getKeyList().contains(key)) {
-//                        keyList = builder.addKey(key).build();
-//                        MemcachedUtils.set(MEMCACHED_KEY_LIST_NAME, 0, keyList.toByteArray());
-//                    }
+                    MemcachedUtils.set(key, 0, new MemcachedCache(key, value, cacheType, fileType, cacheDir).toByteArray());
+                    //todo key list
                 } catch (CacheException e) {
                     logger.error("put cache exception", e);
                 } catch (InvalidProtocolBufferException e) {
@@ -179,7 +175,9 @@ public class MemcachedCacheManager extends AbstractCacheManager {
     public void remove(String key) {
         try {
             MemcachedUtils.delete(key);
-            CacheFile file = SimpleCacheContent.lookupCacheFile(key, this.cacheDir);
+            //todo 设置键列表
+
+            CacheFile file = SimpleCache.lookupCacheFile(key, this.cacheDir);
             if (file != null) {
                 file.delete();
             }
@@ -198,28 +196,28 @@ public class MemcachedCacheManager extends AbstractCacheManager {
 
             if (data != null) {
                 logger.debug("发现缓存...");
-                return new MemcachedCache(key, (byte[]) data, this.cacheType, this.cacheDir);
+                return new MemcachedCache(key, this.cacheDir, this.cacheType, (byte[]) data);
             } else {
                 logger.debug("未发现缓存，查看缓存文件是否存在...");
                 // 查看缓存文件是否存在
-                CacheContent content = null;
+                Cache cache = null;
                 try {
-                    content = SimpleCacheContent.createFromCacheFile(key, this.cacheType, this.cacheDir);
+                    cache = SimpleCache.createFromCacheFile(key, this.cacheType, this.cacheDir);
                 } catch (CacheException e) {
                     logger.error("从文件创建缓存内容失败", e);
                 }
-                if (content != null) {
+                if (cache != null) {
                     logger.debug("从缓存文件建立内容");
                     final MemcachedCacheManager manager = this;
-                    final CacheContent finalContent = content;
+                    final Cache finalCache = cache;
                     //异步的进行缓存设置
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            manager.put(key, finalContent.getContent(), finalContent.getFileType());
+                            manager.put(key, finalCache.getContent(), finalCache.getFileType());
                         }
                     }).run();
-                    return new MemcachedCache(content);
+                    return cache;
                 }
             }
         } catch (CacheException e) {

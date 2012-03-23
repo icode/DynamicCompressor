@@ -37,7 +37,6 @@ import com.google.common.css.compiler.passes.PrettyPrinter;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
 import com.log4ic.compressor.cache.Cache;
-import com.log4ic.compressor.cache.CacheContent;
 import com.log4ic.compressor.cache.CacheManager;
 import com.log4ic.compressor.exception.CompressionException;
 import com.log4ic.compressor.exception.QueryStringEmptyException;
@@ -698,9 +697,6 @@ public class Compressor {
             String code = null;
             //再次验证cache，如果是等待中的线程则不会再压缩
             if (cache == null || cache.isExpired()) {
-                if (cache != null && cache.isExpired()) {
-                    cache.removeContent();
-                }
                 //获取参数的文件并合并
                 List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type, fileDomain);
                 //压缩
@@ -708,10 +704,14 @@ public class Compressor {
                 if (cacheManager != null) {
                     //开启线程，放入缓存，提高响应速度
                     final String finalCode = code;
+                    final Cache finalCache = cache;
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
                             try {
+                                if (finalCache != null && finalCache.isExpired()) {
+                                    finalCache.removeContent();
+                                }
                                 cacheManager.put(queryString, finalCode, type);
                             } finally {
                                 Lock cacheLock;
@@ -728,7 +728,7 @@ public class Compressor {
                 }
                 return code;
             } else {
-                return cache.getContent().getContent();
+                return cache.getContent();
             }
         } catch (Exception e) {
             if (cacheManager != null) {
@@ -803,8 +803,7 @@ public class Compressor {
             //进行构建代码
             code = buildCode(type, queryString, cacheManager, request, response, fileDomain);
         } else {
-            CacheContent cacheContent = cache.getContent();
-            code = cacheContent.getContent();
+            code = cache.getContent();
         }
 
         //将内容输出

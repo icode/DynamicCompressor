@@ -25,17 +25,27 @@
 package com.log4ic.compressor.cache.impl.simple;
 
 import com.log4ic.compressor.cache.Cache;
-import com.log4ic.compressor.cache.CacheContent;
+import com.log4ic.compressor.cache.CacheFile;
 import com.log4ic.compressor.cache.CacheType;
+import com.log4ic.compressor.cache.exception.CacheException;
+import com.log4ic.compressor.utils.ByteArrayUtils;
+import com.log4ic.compressor.utils.Compressor;
+import com.log4ic.compressor.utils.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 
 /**
  * @author 张立鑫 IntelligentCode
  */
 public class SimpleCache implements Serializable, Cache {
-
+    private static final Logger logger = LoggerFactory.getLogger(SimpleCache.class);
     /**
      * 创建时间
      */
@@ -48,10 +58,194 @@ public class SimpleCache implements Serializable, Cache {
      * 命中次数
      */
     protected int hitTimes = 0;
+    protected CacheType cacheType;
+    protected String content = null;
+    protected CacheFile cacheFile;
+    protected String cacheDir;
+    protected String key;
+
+    protected SimpleCache(String key, CacheType type, String dir) {
+        this.cacheType = type;
+        this.cacheDir = FileUtils.appendSeparator(dir);
+        this.key = key;
+    }
+
+    public SimpleCache(String key, String content, CacheType type, Compressor.FileType fileType, String dir) throws CacheException {
+        this(key, type, dir);
+        //将缓存写入文件
+        this.cacheFile = this.writeContent(content, fileType);
+        //如果缓存类型为内存，则放入内存缓存
+        if (type == CacheType.MEMORY) {
+            this.content = content;
+        }
+    }
+
+    public SimpleCache(String key, CacheFile file, CacheType type, String dir) {
+        this(key, type, dir);
+        this.cacheFile = file;
+    }
+
+    public static Cache createFromCacheFile(String key, CacheType cacheType, String dir) throws CacheException {
+        CacheFile file = lookupCacheFile(key, dir);
+        if (file != null) {
+            return new SimpleCache(key, file, cacheType, dir);
+        }
+        return null;
+    }
+
+    public static Cache createFromCacheFile(String key, CacheType cacheType, Compressor.FileType fileType, String dir) throws CacheException {
+        CacheFile file = findCacheFile(key, fileType, dir);
+        if (file != null) {
+            return new SimpleCache(key, file, cacheType, dir);
+        }
+        return null;
+    }
+
+    protected String readContent() {
+        return this.cacheFile.readContent();
+    }
+
+    protected static String encodeFileName(String name) throws CacheException {
+        MessageDigest md = null;
+        //用MD5编码参数作为缓存文件名称
+        try {
+            md = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        //MD5
+        byte[] results = new byte[0];
+        try {
+            if (md != null) {
+                results = md.digest(name.getBytes("UTF-8"));
+            }
+        } catch (UnsupportedEncodingException e) {
+            throw new CacheException("编码格式转换失败", e);
+        }
+        return ByteArrayUtils.toStringHex(results);
+    }
+
+
     /**
-     * 缓存内容
+     * 将缓存写入文件，如果文件存并且未过期在则直接返回该文件
+     *
+     * @param content
+     * @return
+     * @throws com.log4ic.compressor.cache.exception.CacheException
+     *
      */
-    protected CacheContent content;
+    protected CacheFile writeContent(String content, Compressor.FileType fileType) throws CacheException {
+        return writeContent(this.key, content, fileType, this.cacheDir, this.getCreateDate().getTime());
+    }
+
+    /**
+     * 将缓存写入文件，如果文件存并且未过期在则直接返回该文件
+     *
+     * @param key
+     * @param content
+     * @param fileType
+     * @param cacheDir
+     * @param createDate
+     * @return
+     * @throws CacheException
+     */
+    public static CacheFile writeContent(String key, String content, Compressor.FileType fileType,
+                                         String cacheDir, long createDate) throws CacheException {
+
+        logger.debug("尝试写入缓存文件....");
+        CacheFile file = findCacheFile(key, fileType, cacheDir);
+
+        if (!file.getFile().exists() || file.getFile().lastModified() <= createDate) {
+            File f = FileUtils.writeFile(content, file.getPath());
+            logger.debug("写入缓存文件完毕!");
+            return new SimpleCacheFile(f, fileType);
+        }
+
+        return file;
+    }
+
+    /**
+     * 移除所有缓存内容
+     */
+    public void remove() {
+        this.content = null;
+        this.cacheFile.delete();
+        this.cacheFile = null;
+    }
+
+    /**
+     * 查找缓存文件
+     *
+     * @param key
+     * @param fileType
+     * @param dir
+     * @return
+     * @throws com.log4ic.compressor.cache.exception.CacheException
+     *
+     */
+    public static CacheFile findCacheFile(String key, Compressor.FileType fileType, String dir) throws CacheException {
+        String type = fileType.name().toLowerCase();
+
+        String filePath = dir + type + File.separator + encodeFileName(key) + "." + type;
+
+        File file = new File(filePath);
+
+        return new SimpleCacheFile(file, fileType);
+    }
+
+    /**
+     * 查找缓存文件
+     *
+     * @param key
+     * @param dir
+     * @return
+     * @throws com.log4ic.compressor.cache.exception.CacheException
+     *
+     */
+    public static CacheFile lookupCacheFile(String key, String dir) throws CacheException {
+        Compressor.FileType[] types = Compressor.FileType.values();
+
+        for (Compressor.FileType type : types) {
+            CacheFile file = findCacheFile(key, type, dir);
+            if (file.exists()) {
+                return file;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 获取缓存内容
+     *
+     * @return
+     */
+    public String getContent() {
+        if (this.content == null) {
+            if (this.cacheType == CacheType.MEMORY) {
+                this.content = readContent();
+                return this.content;
+            } else if (this.cacheType == CacheType.FILE) {
+                return readContent();
+            }
+        } else {
+            return this.content;
+        }
+        return null;
+    }
+
+
+    public CacheFile getCacheFile() {
+        return cacheFile;
+    }
+
+    public File getCacheDir() {
+        return new File(cacheDir);
+    }
+
+    public Compressor.FileType getFileType() {
+        return this.cacheFile.getFileType();
+    }
 
     /**
      * 缓存是否过期
@@ -70,23 +264,22 @@ public class SimpleCache implements Serializable, Cache {
         return hitTimes;
     }
 
-    public CacheContent getContent() {
-        return content;
-    }
 
     public CacheType getCacheType() {
-        return this.getContent().getCacheType();
+        return this.cacheType;
     }
 
     public String getKey() {
-        return this.getContent().getKey();
+        return this.key;
     }
 
+    @Override
     public void removeContent() {
-        if (this.getContent() != null) {
-            this.getContent().remove();
-        }
+        this.content = null;
+        this.cacheFile.delete();
+        this.cacheFile = null;
     }
+
 
     @Override
     public boolean isExpired() {

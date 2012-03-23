@@ -24,6 +24,9 @@
 
 package com.log4ic.compressor.cache;
 
+import com.log4ic.compressor.utils.Compressor;
+
+import java.io.File;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -47,11 +50,6 @@ public interface Cache extends Serializable {
      * 命中次数
      */
     public int getHitTimes();
-
-    /**
-     * 缓存内容
-     */
-    public CacheContent getContent();
 
     /**
      * 缓存类型
@@ -83,4 +81,28 @@ public interface Cache extends Serializable {
      * @param expired
      */
     public void setExpired(boolean expired);
+
+    /**
+     * 获取缓存文件
+     *
+     * @return
+     */
+    public CacheFile getCacheFile();
+
+    /**
+     * 获取缓存目录
+     *
+     * @return
+     */
+    public File getCacheDir();
+
+
+    /**
+     * 获取缓存的文件类型
+     *
+     * @return
+     */
+    public Compressor.FileType getFileType();
+    
+    public String getContent();
 }
