@@ -168,7 +168,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
                     logger.error("put cacheKeyList exception", e);
                 }
             }
-        }).run();
+        }).start();
     }
 
     @Override
@@ -216,7 +216,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
                         public void run() {
                             manager.put(key, finalCache.getContent(), finalCache.getFileType());
                         }
-                    }).run();
+                    }).start();
                     return cache;
                 }
             }

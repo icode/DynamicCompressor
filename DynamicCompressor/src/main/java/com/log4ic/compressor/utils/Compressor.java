@@ -724,7 +724,7 @@ public class Compressor {
                                 }
                             }
                         }
-                    }).run();
+                    }).start();
                 }
                 return code;
             } else {

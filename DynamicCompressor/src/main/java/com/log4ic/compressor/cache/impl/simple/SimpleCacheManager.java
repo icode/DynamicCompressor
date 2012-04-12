@@ -198,7 +198,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
                     public void run() {
                         manager.putCache(key, finalCache);
                     }
-                }).run();
+                }).start();
             }
         }
 
@@ -212,7 +212,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
                     finalSCache.setLastVisitDate(new Date());
 //                    }
                 }
-            }).run();
+            }).start();
         }
         return sCache;
     }
