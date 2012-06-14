@@ -36,6 +36,8 @@ import org.dom4j.io.SAXReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketAddress;
@@ -59,11 +61,20 @@ public class MemcachedUtils {
 
     private static StringBuilder serverStringBuilder = new StringBuilder();
 
+    private static String CONFIG_FILE_PATH = "/conf/memcached-servers.xml";
+
+    public static void setConfigFile(File file) throws FileNotFoundException {
+        if (file.exists() && file.isFile()) {
+            CONFIG_FILE_PATH = file.getPath();
+        } else {
+            throw new FileNotFoundException("无法找到配置文件！");
+        }
+    }
 
     //设置MemcachedClient的日志器
     static {
         logger.debug("读取Memcached配置文件:/conf/memcached-servers.xml");
-        InputStream in = MemcachedCacheManager.class.getResourceAsStream("/conf/memcached-servers.xml");
+        InputStream in = MemcachedCacheManager.class.getResourceAsStream(CONFIG_FILE_PATH);
         if (in == null) {
             logger.error("conf/memcached-servers.xml file not exists!");
         }
