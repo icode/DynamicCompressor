@@ -73,10 +73,10 @@ public class MemcachedUtils {
 
     //设置MemcachedClient的日志器
     static {
-        logger.debug("读取Memcached配置文件:/conf/memcached-servers.xml");
+        logger.debug("读取Memcached配置文件:" + CONFIG_FILE_PATH);
         InputStream in = MemcachedCacheManager.class.getResourceAsStream(CONFIG_FILE_PATH);
         if (in == null) {
-            logger.error("conf/memcached-servers.xml file not exists!");
+            logger.error(CONFIG_FILE_PATH + " file not exists!");
         }
         SAXReader reader = new SAXReader();
         Document doc = null;
@@ -84,7 +84,7 @@ public class MemcachedUtils {
         try {
             doc = reader.read(in);
         } catch (DocumentException e) {
-            logger.error("conf/memcached-servers.xml file DocumentException!", e);
+            logger.error(CONFIG_FILE_PATH + " file DocumentException!", e);
         }
 
         if (doc != null) {
@@ -104,18 +104,6 @@ public class MemcachedUtils {
             serverStringBuilder.deleteCharAt(serverStringBuilder.length() - 1);
 
             logger.debug("读取服务器列表完成，共" + nodeList.size() + "个节点.");
-
-            logger.debug("配置MemcachedClient日志器 /conf/memcached-servers.xml!/memcached/logger ...");
-            Node node = doc.selectSingleNode("/memcached/logger");
-            if (node != null) {
-                String className = node.getText();
-                logger.debug("发现MemcachedClient日志器配置:" + className + ";应用配置...");
-                Properties systemProperties = System.getProperties();
-                systemProperties.put("net.spy.log.LoggerImpl", className);
-                System.setProperties(systemProperties);
-            } else {
-                logger.warn("未发现MemcachedClient日志器配置!");
-            }
         }
     }
 
