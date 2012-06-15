@@ -61,8 +61,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -78,7 +76,7 @@ public class Compressor {
 
     private static final Logger logger = LoggerFactory.getLogger(Compressor.class);
 
-    private static final Map<String, Lock> progressCacheLock = new FastMap<String, Lock>();
+    private static final Map<String, byte[]> progressCacheLock = new FastMap<String, byte[]>();
 
     /**
      * 压缩JS
@@ -676,20 +674,21 @@ public class Compressor {
         try {
             //如果有缓存管理器则进行线程同步操作
             if (cacheManager != null) {
-                Lock cacheLock;
+                byte[] cacheLock;
                 //获取该次任务的压缩线程锁
                 synchronized (progressCacheLock) {
                     cacheLock = progressCacheLock.get(queryString);
                 }
                 if (cacheLock != null) {
                     //如果已经有在压缩的线程则等待该线程结束
-                    cacheLock.lock();
+                    synchronized (cacheLock) {
+                        cacheLock.wait();
+                    }
                     //并直接返回缓存内容
                     cache = cacheManager.get(queryString);
                 } else {
                     //如过没有转化中的线程则创建该任务（每个任务按照queryString划分）的压缩的线程锁
-                    cacheLock = new ReentrantLock();
-                    cacheLock.lock();
+                    cacheLock = new byte[0];
                     synchronized (progressCacheLock) {
                         progressCacheLock.put(queryString, cacheLock);
                     }
@@ -703,25 +702,21 @@ public class Compressor {
                 //压缩
                 code = HttpUtils.getBooleanParam(request, "nocompress") ? code : compressCode(codeList, request, type);
                 if (cacheManager != null) {
-                    //开启线程，放入缓存，提高响应速度
                     final String finalCode = code;
-                    final Cache finalCache = cache;
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
                             try {
-                                if (finalCache != null && finalCache.isExpired()) {
-                                    finalCache.removeContent();
-                                }
                                 cacheManager.put(queryString, finalCode, type);
+                            } catch (Exception e) {
+                                logger.error("", e);
                             } finally {
-                                Lock cacheLock;
+                                byte[] cacheLock;
                                 synchronized (progressCacheLock) {
-                                    cacheLock = progressCacheLock.get(queryString);
-                                    progressCacheLock.remove(queryString);
+                                    cacheLock = progressCacheLock.remove(queryString);
                                 }
-                                if (cacheLock != null) {
-                                    cacheLock.unlock();
+                                synchronized (cacheLock) {
+                                    cacheLock.notifyAll();
                                 }
                             }
                         }
@@ -733,13 +728,12 @@ public class Compressor {
             }
         } catch (Exception e) {
             if (cacheManager != null) {
-                Lock cacheLock;
+                byte[] cacheLock;
                 synchronized (progressCacheLock) {
-                    cacheLock = progressCacheLock.get(queryString);
-                    progressCacheLock.remove(queryString);
+                    cacheLock = progressCacheLock.remove(queryString);
                 }
-                if (cacheLock != null) {
-                    cacheLock.unlock();
+                synchronized (cacheLock) {
+                    cacheLock.notifyAll();
                 }
             }
             throw new CompressionException(e);
@@ -790,11 +784,19 @@ public class Compressor {
 
         Cache cache = null;
         if (cacheManager != null) {
-            //线程不安全，减少性能消耗
-            if (!progressCacheLock.isEmpty() && progressCacheLock.containsKey(queryString)) {
-                Lock lock = progressCacheLock.get(queryString);
-                lock.lock();
-                lock.unlock();
+            //双保险锁，减少性能消耗
+            byte[] lock = progressCacheLock.get(queryString);
+            if (lock != null) {
+                try {
+                    synchronized (progressCacheLock) {
+                        lock = progressCacheLock.get(queryString);
+                        if (lock != null) {
+                            lock.wait();
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    logger.error("", e);
+                }
             }
             cache = cacheManager.get(queryString);
         }

@@ -39,7 +39,9 @@ import java.nio.charset.CharsetDecoder;
 public class FileUtils {
     private FileUtils() {
     }
-
+    public static InputStream getResourceAsStream(String source) {
+        return FileUtils.class.getResourceAsStream(source);
+    }
     /**
      * 将数据写入文件
      *

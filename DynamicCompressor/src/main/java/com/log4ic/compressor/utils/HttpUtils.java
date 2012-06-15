@@ -57,20 +57,16 @@ public class HttpUtils {
     private static List<BrowserTester> browserTesterList = new FastList<BrowserTester>();
     private static List<PlatformTester> platformTesterList = new FastList<PlatformTester>();
 
-    private static InputStream getResourceAsStream(String source) {
-        return HttpUtils.class.getClassLoader().getResourceAsStream(source);
-    }
-
     static {
-        logger.debug("读取游览器匹配配置文件 conf/browsers.js...");
-        InputStream browserFormatsIn = getResourceAsStream("conf/browsers.js");
+        logger.debug("读取游览器匹配配置文件 /conf/browsers.js...");
+        InputStream browserFormatsIn = FileUtils.getResourceAsStream("/conf/browsers.js");
         Gson gson = new Gson();
         Reader reader = new InputStreamReader(browserFormatsIn);
         try {
             browserTesterList = gson.fromJson(reader, new TypeToken<List<BrowserTester>>() {
             }.getType());
         } catch (Exception e) {
-            logger.error("读取游览器匹配配置文件 conf/browsers.js 文件失败", e);
+            logger.error("读取游览器匹配配置文件 /conf/browsers.js 文件失败", e);
         } finally {
             try {
                 reader.close();
@@ -78,14 +74,14 @@ public class HttpUtils {
                 logger.error("IOException", e);
             }
         }
-        logger.debug("读取平台匹配配置文件 conf/platform.js...");
-        InputStream platFormatsIn = getResourceAsStream("conf/platform.js");
+        logger.debug("读取平台匹配配置文件 /conf/platform.js...");
+        InputStream platFormatsIn = FileUtils.getResourceAsStream("/conf/platform.js");
         reader = new InputStreamReader(platFormatsIn);
         try {
             platformTesterList = gson.fromJson(reader, new TypeToken<List<PlatformTester>>() {
             }.getType());
         } catch (Exception e) {
-            logger.error("读取平台匹配配置文件 conf/platform.js 文件失败", e);
+            logger.error("读取平台匹配配置文件 /conf/platform.js 文件失败", e);
         } finally {
             try {
                 reader.close();
