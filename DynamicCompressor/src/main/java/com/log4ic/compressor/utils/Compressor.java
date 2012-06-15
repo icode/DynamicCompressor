@@ -42,6 +42,7 @@ import com.log4ic.compressor.exception.CompressionException;
 import com.log4ic.compressor.exception.QueryStringEmptyException;
 import com.log4ic.compressor.exception.UnsupportedFileTypeException;
 import com.log4ic.compressor.servlet.http.ContentResponseWrapper;
+import com.log4ic.compressor.servlet.http.stream.ContentResponseStream;
 import com.log4ic.compressor.utils.gss.GssFunctionMapProvider;
 import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
 import javolution.util.FastList;
@@ -445,7 +446,7 @@ public class Compressor {
                         fragment = Compressor.fixUrlPath(fragment, url, type, fileDomain);
                         code.append(fragment);
                         code.append("\n");
-                        wrapperResponse.reset();
+                        ((ContentResponseStream) wrapperResponse.getOutputStream()).reset();
                     }
                 } catch (ServletException e) {
                     throw new CompressionException("ServletException", e);

@@ -104,6 +104,18 @@ public class MemcachedUtils {
             serverStringBuilder.deleteCharAt(serverStringBuilder.length() - 1);
 
             logger.debug("读取服务器列表完成，共" + nodeList.size() + "个节点.");
+
+            logger.debug("配置MemcachedClient日志器 /conf/memcached-servers.xml!/memcached/logger ...");
+            Node node = doc.selectSingleNode("/memcached/logger");
+            if (node != null) {
+                String className = node.getText();
+                logger.debug("发现MemcachedClient日志器配置:" + className + ";应用配置...");
+                Properties systemProperties = System.getProperties();
+                systemProperties.put("net.spy.log.LoggerImpl", className);
+                System.setProperties(systemProperties);
+            } else {
+                logger.warn("未发现MemcachedClient日志器配置!");
+            }
         }
     }
 

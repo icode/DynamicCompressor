@@ -22,7 +22,8 @@
   ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
   -->
 <memcached>
-     <shutdown>
+    <logger>com.log4ic.compressor.cache.impl.memcached.logger.Slf4JLogger</logger>
+    <shutdown>
         <timeout>4</timeout>
         <unit>MINUTES</unit>
     </shutdown>

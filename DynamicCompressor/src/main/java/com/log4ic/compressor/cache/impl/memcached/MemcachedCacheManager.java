@@ -151,24 +151,19 @@ public class MemcachedCacheManager extends AbstractCacheManager {
 
 
     @Override
-    public void put(final String key, final String value, final Compressor.FileType fileType) {
+    public void put(String key, final String value, final Compressor.FileType fileType) {
         final CacheType cacheType = this.cacheType;
         final String cacheDir = this.cacheDir;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    MemcachedUtils.set(key, 0, new MemcachedCache(key, value, cacheType, fileType, cacheDir).toByteArray());
-                    //todo key list
-                } catch (CacheException e) {
-                    logger.error("put cache exception", e);
-                } catch (InvalidProtocolBufferException e) {
-                    logger.error("put cacheKeyList exception", e);
-                } catch (IOException e) {
-                    logger.error("put cacheKeyList exception", e);
-                }
-            }
-        }).start();
+        try {
+            MemcachedUtils.set(key, 0, new MemcachedCache(key, value, cacheType, fileType, cacheDir).toByteArray());
+            //todo key list
+        } catch (CacheException e) {
+            logger.error("put cache exception", e);
+        } catch (InvalidProtocolBufferException e) {
+            logger.error("put cacheKeyList exception", e);
+        } catch (IOException e) {
+            logger.error("put cacheKeyList exception", e);
+        }
     }
 
     @Override
@@ -209,14 +204,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
                 if (cache != null) {
                     logger.debug("从缓存文件建立内容");
                     final MemcachedCacheManager manager = this;
-                    final Cache finalCache = cache;
-                    //异步的进行缓存设置
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            manager.put(key, finalCache.getContent(), finalCache.getFileType());
-                        }
-                    }).start();
+                    manager.put(key, cache.getContent(), cache.getFileType());
                     return cache;
                 }
             }
