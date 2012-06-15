@@ -166,7 +166,13 @@ public class MemcachedCache implements Cache {
             MemcachedUtils.delete(key);
         } catch (IOException e) {
             logger.error("删除缓存失败", e);
-        }
+        } /*finally {
+            try {
+                MemcachedUtils.shutdown();
+            } catch (IOException e) {
+                logger.error("close memcached client error", e);
+            }
+        }*/
     }
 
     @Override
@@ -181,10 +187,16 @@ public class MemcachedCache implements Cache {
             cache = cache.toBuilder().setCreateDate(0).build();
             this.memcachedCache = cache;
             try {
-                MemcachedUtils.getMemcachedClient().set(this.getKey(), 0, cache.toByteArray());
+                MemcachedUtils.set(this.getKey(), 0, cache.toByteArray());
             } catch (IOException e) {
                 logger.error("标记缓存过期失败!", e);
-            }
+            } /*finally {
+                try {
+                    MemcachedUtils.shutdown();
+                } catch (IOException e) {
+                    logger.error("close memcached client error", e);
+                }
+            }*/
         }
     }
 

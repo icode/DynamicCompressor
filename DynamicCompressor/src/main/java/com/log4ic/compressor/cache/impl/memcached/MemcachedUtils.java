@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.Future;
@@ -55,10 +56,6 @@ public class MemcachedUtils {
     }
 
     private static final Logger logger = LoggerFactory.getLogger(MemcachedUtils.class);
-
-    private static MemcachedClient memcachedClient;
-
-    private static final byte[] lock = new byte[0];
 
     private static StringBuilder serverStringBuilder = new StringBuilder();
 
@@ -122,20 +119,55 @@ public class MemcachedUtils {
                 } else {
                     logger.warn("未发现MemcachedClient日志器配置!");
                 }
+
+                Runtime.getRuntime().addShutdownHook(new Thread() {
+                    public void run() {
+                        if (client != null && !client.isShuttingDown())
+                            client.shutdown();
+                    }
+                });
             }
         }
     }
 
     public static MemcachedClient getMemcachedClient() throws IOException {
-        if (memcachedClient == null) {
-            synchronized (lock) {
-                if (memcachedClient == null) {
-                    memcachedClient = new MemcachedClient(new BinaryConnectionFactory(),
-                            AddrUtil.getAddresses(serverStringBuilder.toString()));
+        return new MemcachedClient(new BinaryConnectionFactory(), serverList);
+    }
+
+    private static class MemcachedClientX extends MemcachedClient {
+        public boolean isShuttingDown() {
+            return this.shuttingDown;
+        }
+
+        public MemcachedClientX(InetSocketAddress... ia) throws IOException {
+            super(ia);
+        }
+
+        public MemcachedClientX(List<InetSocketAddress> addrs) throws IOException {
+            super(addrs);
+        }
+
+        public MemcachedClientX(ConnectionFactory cf, List<InetSocketAddress> addrs) throws IOException {
+            super(cf, addrs);
+        }
+    }
+
+    private static final ConnectionFactory connectionFactory = new BinaryConnectionFactory();
+
+    private static final List<InetSocketAddress> serverList = AddrUtil.getAddresses(serverStringBuilder.toString());
+
+    private static MemcachedClientX client;
+
+
+    public static MemcachedClient getSingleMemcachedClient() throws IOException {
+        if (client == null) {
+            synchronized (connectionFactory) {
+                if (client == null || client.isShuttingDown()) {
+                    client = new MemcachedClientX(connectionFactory, serverList);
                 }
             }
         }
-        return memcachedClient;
+        return client;
     }
 
     /**
@@ -150,7 +182,7 @@ public class MemcachedUtils {
      * @return point-in-time view of currently available servers
      */
     public static Collection<SocketAddress> getAvailableServers() throws IOException {
-        return getMemcachedClient().getAvailableServers();
+        return getSingleMemcachedClient().getAvailableServers();
     }
 
     /**
@@ -165,7 +197,7 @@ public class MemcachedUtils {
      * @return point-in-time view of currently available servers
      */
     public static Collection<SocketAddress> getUnavailableServers() throws IOException {
-        return getMemcachedClient().getUnavailableServers();
+        return getSingleMemcachedClient().getUnavailableServers();
     }
 
     /**
@@ -174,7 +206,7 @@ public class MemcachedUtils {
      * @return this instance's NodeLocator
      */
     public static NodeLocator getNodeLocator() throws IOException {
-        return getMemcachedClient().getNodeLocator();
+        return getSingleMemcachedClient().getNodeLocator();
     }
 
     /**
@@ -183,7 +215,7 @@ public class MemcachedUtils {
      * @return this instance's Transcoder
      */
     public static Transcoder<Object> getTranscoder() throws IOException {
-        return getMemcachedClient().getTranscoder();
+        return getSingleMemcachedClient().getTranscoder();
     }
 
     /**
@@ -198,7 +230,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static <T> OperationFuture<Boolean> touch(final String key, final int exp) throws IOException {
-        return getMemcachedClient().touch(key, exp);
+        return getSingleMemcachedClient().touch(key, exp);
     }
 
     /**
@@ -214,7 +246,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<Boolean> touch(final String key, final int exp,
                                                      final Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().touch(key, exp, tc);
+        return getSingleMemcachedClient().touch(key, exp, tc);
     }
 
     /**
@@ -233,7 +265,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> append(long cas, String key, Object val) throws IOException {
-        return getMemcachedClient().append(cas, key, val);
+        return getSingleMemcachedClient().append(cas, key, val);
     }
 
     /**
@@ -254,7 +286,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<Boolean> append(long cas, String key, T val,
                                                       Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().append(cas, key, val, tc);
+        return getSingleMemcachedClient().append(cas, key, val, tc);
     }
 
     /**
@@ -272,7 +304,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> prepend(long cas, String key, Object val) throws IOException {
-        return getMemcachedClient().prepend(cas, key, val);
+        return getSingleMemcachedClient().prepend(cas, key, val);
     }
 
     /**
@@ -293,7 +325,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<Boolean> prepend(long cas, String key, T val,
                                                        Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().prepend(cas, key, val, tc);
+        return getSingleMemcachedClient().prepend(cas, key, val, tc);
     }
 
     /**
@@ -310,7 +342,7 @@ public class MemcachedUtils {
      */
     public static <T> Future<CASResponse> asyncCAS(String key, long casId, T value,
                                                    Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().asyncCAS(key, casId, value, tc);
+        return getSingleMemcachedClient().asyncCAS(key, casId, value, tc);
     }
 
     /**
@@ -328,7 +360,7 @@ public class MemcachedUtils {
      */
     public static <T> Future<CASResponse> asyncCAS(String key, long casId, int exp,
                                                    T value, Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().asyncCAS(key, casId, exp, value, tc);
+        return getSingleMemcachedClient().asyncCAS(key, casId, exp, value, tc);
     }
 
     /**
@@ -342,7 +374,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static Future<CASResponse> asyncCAS(String key, long casId, Object value) throws IOException {
-        return getMemcachedClient().asyncCAS(key, casId, value);
+        return getSingleMemcachedClient().asyncCAS(key, casId, value);
     }
 
     /**
@@ -360,7 +392,7 @@ public class MemcachedUtils {
      */
     public static <T> CASResponse cas(String key, long casId, T value,
                                       Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().cas(key, casId, value, tc);
+        return getSingleMemcachedClient().cas(key, casId, value, tc);
     }
 
     /**
@@ -379,7 +411,7 @@ public class MemcachedUtils {
      */
     public static <T> CASResponse cas(String key, long casId, int exp, T value,
                                       Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().cas(key, casId, exp, value, tc);
+        return getSingleMemcachedClient().cas(key, casId, exp, value, tc);
     }
 
     /**
@@ -395,7 +427,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static CASResponse cas(String key, long casId, Object value) throws IOException {
-        return getMemcachedClient().cas(key, casId, value);
+        return getSingleMemcachedClient().cas(key, casId, value);
     }
 
     /**
@@ -432,7 +464,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<Boolean> add(String key, int exp, T o,
                                                    Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().add(key, exp, o, tc);
+        return getSingleMemcachedClient().add(key, exp, o, tc);
     }
 
     /**
@@ -467,7 +499,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> add(String key, int exp, Object o) throws IOException {
-        return getMemcachedClient().add(key, exp, o);
+        return getSingleMemcachedClient().add(key, exp, o);
     }
 
     /**
@@ -504,7 +536,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<Boolean> set(String key, int exp, T o,
                                                    Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().set(key, exp, o, tc);
+        return getSingleMemcachedClient().set(key, exp, o, tc);
     }
 
     /**
@@ -539,7 +571,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> set(String key, int exp, Object o) throws IOException {
-        return getMemcachedClient().set(key, exp, o);
+        return getSingleMemcachedClient().set(key, exp, o);
     }
 
     /**
@@ -577,7 +609,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<Boolean> replace(String key, int exp, T o,
                                                        Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().replace(key, exp, o, tc);
+        return getSingleMemcachedClient().replace(key, exp, o, tc);
     }
 
     /**
@@ -612,7 +644,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> replace(String key, int exp, Object o) throws IOException {
-        return getMemcachedClient().replace(key, exp, o);
+        return getSingleMemcachedClient().replace(key, exp, o);
     }
 
     /**
@@ -626,7 +658,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static <T> GetFuture<T> asyncGet(final String key, final Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().asyncGet(key, tc);
+        return getSingleMemcachedClient().asyncGet(key, tc);
     }
 
     /**
@@ -638,7 +670,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static GetFuture<Object> asyncGet(final String key) throws IOException {
-        return getMemcachedClient().asyncGet(key);
+        return getSingleMemcachedClient().asyncGet(key);
     }
 
     /**
@@ -653,7 +685,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<CASValue<T>> asyncGets(final String key,
                                                              final Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().asyncGets(key, tc);
+        return getSingleMemcachedClient().asyncGets(key, tc);
     }
 
     /**
@@ -666,7 +698,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<CASValue<Object>> asyncGets(final String key) throws IOException {
-        return getMemcachedClient().asyncGets(key);
+        return getSingleMemcachedClient().asyncGets(key);
     }
 
     /**
@@ -681,7 +713,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static <T> CASValue<T> gets(String key, Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().gets(key, tc);
+        return getSingleMemcachedClient().gets(key, tc);
     }
 
     /**
@@ -698,7 +730,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static <T> CASValue<T> getAndTouch(String key, int exp, Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().getAndTouch(key, exp, tc);
+        return getSingleMemcachedClient().getAndTouch(key, exp, tc);
     }
 
     /**
@@ -713,7 +745,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static CASValue<Object> getAndTouch(String key, int exp) throws IOException {
-        return getMemcachedClient().getAndTouch(key, exp);
+        return getSingleMemcachedClient().getAndTouch(key, exp);
     }
 
     /**
@@ -727,7 +759,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static CASValue<Object> gets(String key) throws IOException {
-        return getMemcachedClient().gets(key);
+        return getSingleMemcachedClient().gets(key);
     }
 
     /**
@@ -743,7 +775,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static <T> T get(String key, Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().get(key, tc);
+        return getSingleMemcachedClient().get(key, tc);
     }
 
     /**
@@ -757,7 +789,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static Object get(String key) throws IOException {
-        return getMemcachedClient().get(key);
+        return getSingleMemcachedClient().get(key);
     }
 
     /**
@@ -776,7 +808,7 @@ public class MemcachedUtils {
      */
     public <T> BulkFuture<Map<String, T>> asyncGetBulk(Iterator<String> keyIter,
                                                        Iterator<Transcoder<T>> tcIter) throws IOException {
-        return getMemcachedClient().asyncGetBulk(keyIter, tcIter);
+        return getSingleMemcachedClient().asyncGetBulk(keyIter, tcIter);
     }
 
     /**
@@ -795,7 +827,7 @@ public class MemcachedUtils {
      */
     public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Collection<String> keys,
                                                               Iterator<Transcoder<T>> tcIter) throws IOException {
-        return getMemcachedClient().asyncGetBulk(keys, tcIter);
+        return getSingleMemcachedClient().asyncGetBulk(keys, tcIter);
     }
 
     /**
@@ -810,7 +842,7 @@ public class MemcachedUtils {
      */
     public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Iterator<String> keyIter,
                                                               Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().asyncGetBulk(keyIter, tc);
+        return getSingleMemcachedClient().asyncGetBulk(keyIter, tc);
     }
 
     /**
@@ -825,7 +857,7 @@ public class MemcachedUtils {
      */
     public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Collection<String> keys,
                                                               Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().asyncGetBulk(keys, tc);
+        return getSingleMemcachedClient().asyncGetBulk(keys, tc);
     }
 
     /**
@@ -839,7 +871,7 @@ public class MemcachedUtils {
      */
     public static BulkFuture<Map<String, Object>> asyncGetBulk(
             Iterator<String> keyIter) throws IOException {
-        return getMemcachedClient().asyncGetBulk(keyIter);
+        return getSingleMemcachedClient().asyncGetBulk(keyIter);
     }
 
     /**
@@ -852,7 +884,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static BulkFuture<Map<String, Object>> asyncGetBulk(Collection<String> keys) throws IOException {
-        return getMemcachedClient().asyncGetBulk(keys);
+        return getSingleMemcachedClient().asyncGetBulk(keys);
     }
 
     /**
@@ -867,7 +899,7 @@ public class MemcachedUtils {
      */
     public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Transcoder<T> tc,
                                                               String... keys) throws IOException {
-        return getMemcachedClient().asyncGetBulk(tc, keys);
+        return getSingleMemcachedClient().asyncGetBulk(tc, keys);
     }
 
     /**
@@ -879,7 +911,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static BulkFuture<Map<String, Object>> asyncGetBulk(String... keys) throws IOException {
-        return getMemcachedClient().asyncGetBulk(keys);
+        return getSingleMemcachedClient().asyncGetBulk(keys);
     }
 
     /**
@@ -893,7 +925,7 @@ public class MemcachedUtils {
      */
     public static OperationFuture<CASValue<Object>> asyncGetAndTouch(final String key,
                                                                      final int exp) throws IOException {
-        return getMemcachedClient().asyncGetAndTouch(key, exp);
+        return getSingleMemcachedClient().asyncGetAndTouch(key, exp);
     }
 
     /**
@@ -908,7 +940,7 @@ public class MemcachedUtils {
      */
     public static <T> OperationFuture<CASValue<T>> asyncGetAndTouch(final String key,
                                                                     final int exp, final Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().asyncGetAndTouch(key, exp, tc);
+        return getSingleMemcachedClient().asyncGetAndTouch(key, exp, tc);
     }
 
     /**
@@ -925,7 +957,7 @@ public class MemcachedUtils {
      */
     public static <T> Map<String, T> getBulk(Iterator<String> keyIter,
                                              Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().getBulk(keyIter, tc);
+        return getSingleMemcachedClient().getBulk(keyIter, tc);
     }
 
     /**
@@ -939,7 +971,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static Map<String, Object> getBulk(Iterator<String> keyIter) throws IOException {
-        return getMemcachedClient().getBulk(keyIter);
+        return getSingleMemcachedClient().getBulk(keyIter);
     }
 
     /**
@@ -956,7 +988,7 @@ public class MemcachedUtils {
      */
     public static <T> Map<String, T> getBulk(Collection<String> keys,
                                              Transcoder<T> tc) throws IOException {
-        return getMemcachedClient().getBulk(keys, tc);
+        return getSingleMemcachedClient().getBulk(keys, tc);
     }
 
     /**
@@ -970,7 +1002,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static Map<String, Object> getBulk(Collection<String> keys) throws IOException {
-        return getMemcachedClient().getBulk(keys);
+        return getSingleMemcachedClient().getBulk(keys);
     }
 
     /**
@@ -986,7 +1018,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static <T> Map<String, T> getBulk(Transcoder<T> tc, String... keys) throws IOException {
-        return getMemcachedClient().getBulk(tc, keys);
+        return getSingleMemcachedClient().getBulk(tc, keys);
     }
 
     /**
@@ -1000,7 +1032,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static Map<String, Object> getBulk(String... keys) throws IOException {
-        return getMemcachedClient().getBulk(keys);
+        return getSingleMemcachedClient().getBulk(keys);
     }
 
     /**
@@ -1011,7 +1043,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static Map<SocketAddress, String> getVersions() throws IOException {
-        return getMemcachedClient().getVersions();
+        return getSingleMemcachedClient().getVersions();
     }
 
     /**
@@ -1022,7 +1054,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static Map<SocketAddress, Map<String, String>> getStats() throws IOException {
-        return getMemcachedClient().getStats();
+        return getSingleMemcachedClient().getStats();
     }
 
     /**
@@ -1035,7 +1067,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static Map<SocketAddress, Map<String, String>> getStats(final String arg) throws IOException {
-        return getMemcachedClient().getStats(arg);
+        return getSingleMemcachedClient().getStats(arg);
     }
 
     /**
@@ -1054,7 +1086,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long incr(String key, long by) throws IOException {
-        return getMemcachedClient().incr(key, by);
+        return getSingleMemcachedClient().incr(key, by);
     }
 
     /**
@@ -1073,7 +1105,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long incr(String key, int by) throws IOException {
-        return getMemcachedClient().incr(key, by);
+        return getSingleMemcachedClient().incr(key, by);
     }
 
     /**
@@ -1092,7 +1124,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long decr(String key, long by) throws IOException {
-        return getMemcachedClient().decr(key, by);
+        return getSingleMemcachedClient().decr(key, by);
     }
 
     /**
@@ -1111,7 +1143,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long decr(String key, int by) throws IOException {
-        return getMemcachedClient().decr(key, by);
+        return getSingleMemcachedClient().decr(key, by);
     }
 
     /**
@@ -1132,7 +1164,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long incr(String key, long by, long def, int exp) throws IOException {
-        return getMemcachedClient().incr(key, by, def, exp);
+        return getSingleMemcachedClient().incr(key, by, def, exp);
     }
 
     /**
@@ -1153,7 +1185,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long incr(String key, int by, long def, int exp) throws IOException {
-        return getMemcachedClient().incr(key, by, def, exp);
+        return getSingleMemcachedClient().incr(key, by, def, exp);
     }
 
     /**
@@ -1174,7 +1206,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long decr(String key, long by, long def, int exp) throws IOException {
-        return getMemcachedClient().decr(key, by, def, exp);
+        return getSingleMemcachedClient().decr(key, by, def, exp);
     }
 
     /**
@@ -1195,7 +1227,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long decr(String key, int by, long def, int exp) throws IOException {
-        return getMemcachedClient().decr(key, by, def, exp);
+        return getSingleMemcachedClient().decr(key, by, def, exp);
     }
 
     /**
@@ -1208,7 +1240,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Long> asyncIncr(String key, long by) throws IOException {
-        return getMemcachedClient().asyncIncr(key, by);
+        return getSingleMemcachedClient().asyncIncr(key, by);
     }
 
     /**
@@ -1221,7 +1253,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Long> asyncIncr(String key, int by) throws IOException {
-        return getMemcachedClient().asyncIncr(key, by);
+        return getSingleMemcachedClient().asyncIncr(key, by);
     }
 
     /**
@@ -1234,7 +1266,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Long> asyncDecr(String key, long by) throws IOException {
-        return getMemcachedClient().asyncDecr(key, by);
+        return getSingleMemcachedClient().asyncDecr(key, by);
     }
 
     /**
@@ -1247,7 +1279,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Long> asyncDecr(String key, int by) throws IOException {
-        return getMemcachedClient().asyncDecr(key, by);
+        return getSingleMemcachedClient().asyncDecr(key, by);
     }
 
     /**
@@ -1263,7 +1295,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long incr(String key, long by, long def) throws IOException {
-        return getMemcachedClient().incr(key, by, def);
+        return getSingleMemcachedClient().incr(key, by, def);
     }
 
     /**
@@ -1279,7 +1311,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long incr(String key, int by, long def) throws IOException {
-        return getMemcachedClient().incr(key, by, def);
+        return getSingleMemcachedClient().incr(key, by, def);
     }
 
     /**
@@ -1295,7 +1327,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long decr(String key, long by, long def) throws IOException {
-        return getMemcachedClient().decr(key, by, def);
+        return getSingleMemcachedClient().decr(key, by, def);
     }
 
     /**
@@ -1311,7 +1343,7 @@ public class MemcachedUtils {
      *                                   full to accept any more requests
      */
     public static long decr(String key, int by, long def) throws IOException {
-        return getMemcachedClient().decr(key, by, def);
+        return getSingleMemcachedClient().decr(key, by, def);
     }
 
     /**
@@ -1334,7 +1366,7 @@ public class MemcachedUtils {
      */
     @Deprecated
     public static OperationFuture<Boolean> delete(String key, int hold) throws IOException {
-        return getMemcachedClient().delete(key, hold);
+        return getSingleMemcachedClient().delete(key, hold);
     }
 
     /**
@@ -1346,7 +1378,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> delete(String key) throws IOException {
-        return getMemcachedClient().delete(key);
+        return getSingleMemcachedClient().delete(key);
     }
 
     /**
@@ -1358,7 +1390,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> flush(final int delay) throws IOException {
-        return getMemcachedClient().flush(delay);
+        return getSingleMemcachedClient().flush(delay);
     }
 
     /**
@@ -1369,18 +1401,18 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static OperationFuture<Boolean> flush() throws IOException {
-        return getMemcachedClient().flush();
+        return getSingleMemcachedClient().flush();
     }
 
     public static Set<String> listSaslMechanisms() throws IOException {
-        return getMemcachedClient().listSaslMechanisms();
+        return getSingleMemcachedClient().listSaslMechanisms();
     }
 
     /**
      * Shut down immediately.
      */
     public static void shutdown() throws IOException {
-        getMemcachedClient().shutdown();
+        shutdown(-1, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -1391,7 +1423,10 @@ public class MemcachedUtils {
      * @return result of the shutdown request
      */
     public static boolean shutdown(long timeout, TimeUnit unit) throws IOException {
-        return shutdown(timeout, unit);
+        MemcachedClient mc = getSingleMemcachedClient();
+        synchronized (mc) {
+            return mc.shutdown(timeout, unit);
+        }
     }
 
     /**
@@ -1404,7 +1439,7 @@ public class MemcachedUtils {
      *                               full to accept any more requests
      */
     public static boolean waitForQueues(long timeout, TimeUnit unit) throws IOException {
-        return getMemcachedClient().waitForQueues(timeout, unit);
+        return getSingleMemcachedClient().waitForQueues(timeout, unit);
     }
 
     /**
@@ -1417,7 +1452,7 @@ public class MemcachedUtils {
      * @return true if the observer was added.
      */
     public static boolean addObserver(ConnectionObserver obs) throws IOException {
-        return addObserver(obs);
+        return getSingleMemcachedClient().addObserver(obs);
     }
 
     /**
@@ -1427,14 +1462,14 @@ public class MemcachedUtils {
      * @return true if the observer existed, but no longer does
      */
     public static boolean removeObserver(ConnectionObserver obs) throws IOException {
-        return getMemcachedClient().removeObserver(obs);
+        return getSingleMemcachedClient().removeObserver(obs);
     }
 
     public static void connectionEstablished(SocketAddress sa, int reconnectCount) throws IOException {
-        getMemcachedClient().connectionEstablished(sa, reconnectCount);
+        getSingleMemcachedClient().connectionEstablished(sa, reconnectCount);
     }
 
     public static void connectionLost(SocketAddress sa) throws IOException {
-        getMemcachedClient().connectionLost(sa);
+        getSingleMemcachedClient().connectionLost(sa);
     }
 }

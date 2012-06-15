@@ -23,10 +23,6 @@
   -->
 <memcached>
     <logger>com.log4ic.compressor.cache.impl.memcached.logger.Slf4JLogger</logger>
-    <shutdown>
-        <timeout>4</timeout>
-        <unit>MINUTES</unit>
-    </shutdown>
     <servers>
         <server>
             <host>127.0.0.1</host>

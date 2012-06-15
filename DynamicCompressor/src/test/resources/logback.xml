@@ -32,7 +32,7 @@
     </appender>
   
   <logger name="com.log4ic.compressor" level="TRACE"/>
-  <logger name="net.spy.memcached" level="ERROR"/>
+  <logger name="net.spy.memcached" level="TRACE"/>
 
   <root level="ERROR">
     <appender-ref ref="STDOUT" />

@@ -101,7 +101,13 @@ public class MemcachedCacheManager extends AbstractCacheManager {
         } catch (IOException e) {
             logger.error("获取键列表错误！", e);
             return 0;
-        }
+        } /*finally {
+            try {
+                MemcachedUtils.shutdown();
+            } catch (IOException e) {
+                logger.error("close memcached client error", e);
+            }
+        }*/
     }
 
     @Override
@@ -125,7 +131,13 @@ public class MemcachedCacheManager extends AbstractCacheManager {
                 map = MemcachedUtils.getBulk(list);
             } catch (IOException e) {
                 logger.error("IOException", e);
-            }
+            } /*finally {
+                try {
+                    MemcachedUtils.shutdown();
+                } catch (IOException e) {
+                    logger.error("close memcached client error", e);
+                }
+            }*/
             if (map != null) {
                 for (String key : map.keySet()) {
                     byte[] bytes = (byte[]) map.get(key);
@@ -163,7 +175,13 @@ public class MemcachedCacheManager extends AbstractCacheManager {
             logger.error("put cacheKeyList exception", e);
         } catch (IOException e) {
             logger.error("put cacheKeyList exception", e);
-        }
+        } /*finally {
+            try {
+                MemcachedUtils.shutdown();
+            } catch (IOException e) {
+                logger.error("close memcached client error", e);
+            }
+        }*/
     }
 
     @Override
@@ -171,7 +189,6 @@ public class MemcachedCacheManager extends AbstractCacheManager {
         try {
             MemcachedUtils.delete(key);
             //todo 设置键列表
-
             CacheFile file = SimpleCache.lookupCacheFile(key, this.cacheDir);
             if (file != null) {
                 file.delete();
@@ -180,7 +197,13 @@ public class MemcachedCacheManager extends AbstractCacheManager {
             logger.error("删除缓存出错", e);
         } catch (IOException e) {
             logger.error("删除缓存出错", e);
-        }
+        } /*finally {
+            try {
+                MemcachedUtils.shutdown();
+            } catch (IOException e) {
+                logger.error("close memcached client error", e);
+            }
+        }*/
     }
 
     @Override
@@ -214,7 +237,13 @@ public class MemcachedCacheManager extends AbstractCacheManager {
             logger.error("获取key错误", e);
         } catch (IOException e) {
             logger.error("获取key错误", e);
-        }
+        } /*finally {
+            try {
+                MemcachedUtils.shutdown();
+            } catch (IOException e) {
+                logger.error("close memcached client error", e);
+            }
+        }*/
         return null;
     }
 

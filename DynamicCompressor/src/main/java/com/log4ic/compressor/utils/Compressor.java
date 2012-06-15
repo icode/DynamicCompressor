@@ -682,6 +682,7 @@ public class Compressor {
                 if (cacheLock != null) {
                     //如果已经有在压缩的线程则等待该线程结束
                     synchronized (cacheLock) {
+                        logger.debug("已经有在压缩的线程，等待其他线程结果");
                         cacheLock.wait();
                     }
                     //并直接返回缓存内容
@@ -780,7 +781,7 @@ public class Compressor {
             }
         }
 
-        String code = "";
+        String code;
 
         Cache cache = null;
         if (cacheManager != null) {
@@ -790,7 +791,10 @@ public class Compressor {
                 try {
                     synchronized (progressCacheLock) {
                         lock = progressCacheLock.get(queryString);
-                        if (lock != null) {
+                    }
+                    if (lock != null) {
+                        logger.debug("等待其他线程结果");
+                        synchronized (lock) {
                             lock.wait();
                         }
                     }
@@ -804,8 +808,10 @@ public class Compressor {
         //这里是为了减少同步带来的性能消耗，将线程同步全部放在耗时操作内，在此块进行线程同步过滤
         if (cache == null || cache.isExpired()) {
             //进行构建代码
+            logger.debug("未找到缓存，进行构建代码");
             code = buildCode(type, queryString, cacheManager, request, response, fileDomain);
         } else {
+            logger.debug("找到缓存，返回数据流");
             code = cache.getContent();
         }
 
