@@ -29,6 +29,9 @@
         enableHeartBeat="true"
         statisticsServer="true"
         statisticsInterval="10000">
+    <socketOption>
+        <TCP_NODELAY type="java.lang.Boolean">true</TCP_NODELAY>
+    </socketOption>
     <servers>
         <server>
             <host>127.0.0.1</host>

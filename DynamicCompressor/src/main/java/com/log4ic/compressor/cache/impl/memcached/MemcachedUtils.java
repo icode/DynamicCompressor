@@ -24,6 +24,7 @@
 
 package com.log4ic.compressor.cache.impl.memcached;
 
+import com.google.code.yanf4j.core.SocketOption;
 import com.log4ic.compressor.utils.FileUtils;
 import net.rubyeye.xmemcached.MemcachedClient;
 import net.rubyeye.xmemcached.MemcachedClientBuilder;
@@ -41,6 +42,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -229,6 +232,43 @@ public class MemcachedUtils {
                 }
             } else {
                 logger.warn("未找到统计连接是否空闲间隔设置！");
+            }
+            logger.debug("网络设置...");
+            nodeList = doc.selectNodes("/memcached/socketOption/*");
+            if (!nodeList.isEmpty()) {
+                for (Node n : nodeList) {
+                    try {
+                        attr = ((Element) n).attribute("type");
+                        if (attr == null) {
+                            logger.error("type attribute undefined");
+                        } else {
+                            String type = attr.getValue();
+                            if (StringUtils.isNotBlank(type)) {
+                                String name = n.getName();
+                                String value = n.getStringValue();
+                                Class valueType = Class.forName(type);
+                                Constructor constructor = SocketOption.class.getConstructor(String.class, Class.class);
+                                SocketOption socketOption = (SocketOption) constructor.newInstance(name, valueType);
+                                constructor = valueType.getConstructor(String.class);
+                                config.builder.setSocketOption(socketOption, constructor.newInstance(value));
+                                logger.debug("设置网络选项[" + name + "]为：" + value);
+                            }
+                        }
+                    } catch (NoSuchMethodException e) {
+                        logger.error("NoSuchMethodException", e);
+                    } catch (InvocationTargetException e) {
+                        logger.error("InvocationTargetException", e);
+                    } catch (InstantiationException e) {
+                        logger.error("InstantiationException", e);
+                    } catch (IllegalAccessException e) {
+                        logger.error("IllegalAccessException", e);
+                    } catch (ClassNotFoundException e) {
+                        logger.error("ClassNotFoundException", e);
+                    }
+
+                }
+            } else {
+                logger.warn("未找网络设置！");
             }
         }
         return config;
