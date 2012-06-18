@@ -32,6 +32,7 @@ import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.cache.impl.memcached.protobuf.MemcachedCacheProtobuf;
 import com.log4ic.compressor.cache.impl.simple.SimpleCache;
 import com.log4ic.compressor.utils.Compressor;
+import com.log4ic.compressor.utils.MemcachedUtils;
 import net.rubyeye.xmemcached.exception.MemcachedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

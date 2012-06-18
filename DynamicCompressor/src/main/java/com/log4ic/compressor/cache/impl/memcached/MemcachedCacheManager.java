@@ -32,6 +32,7 @@ import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.cache.impl.simple.SimpleCache;
 import com.log4ic.compressor.utils.Compressor;
+import com.log4ic.compressor.utils.MemcachedUtils;
 import javolution.util.FastList;
 import net.rubyeye.xmemcached.exception.MemcachedException;
 import net.rubyeye.xmemcached.transcoders.IntegerTranscoder;

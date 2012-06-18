@@ -22,10 +22,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.log4ic.compressor.cache.impl.memcached;
+package com.log4ic.compressor.utils;
 
 import com.google.code.yanf4j.core.SocketOption;
-import com.log4ic.compressor.utils.FileUtils;
 import net.rubyeye.xmemcached.CommandFactory;
 import net.rubyeye.xmemcached.MemcachedClient;
 import net.rubyeye.xmemcached.MemcachedClientBuilder;
