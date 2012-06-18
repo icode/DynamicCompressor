@@ -173,13 +173,11 @@ public class MemcachedCacheManager extends AbstractCacheManager {
         final CacheType cacheType = this.cacheType;
         final String cacheDir = this.cacheDir;
         try {
-            MemcachedUtils.set(key, 0, new MemcachedCache(key, value, cacheType, fileType, cacheDir).toByteArray());
+            MemcachedUtils.setWithNoReply(key, 0, new MemcachedCache(key, value, cacheType, fileType, cacheDir).toByteArray());
             //todo key list
         } catch (CacheException e) {
             logger.error("put cache exception", e);
         } catch (InterruptedException e) {
-            logger.error("put cacheKeyList exception", e);
-        } catch (TimeoutException e) {
             logger.error("put cacheKeyList exception", e);
         } catch (MemcachedException e) {
             logger.error("put cacheKeyList exception", e);

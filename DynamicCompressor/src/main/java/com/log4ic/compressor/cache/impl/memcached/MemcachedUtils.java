@@ -26,9 +26,11 @@ package com.log4ic.compressor.cache.impl.memcached;
 
 import com.google.code.yanf4j.core.SocketOption;
 import com.log4ic.compressor.utils.FileUtils;
+import net.rubyeye.xmemcached.CommandFactory;
 import net.rubyeye.xmemcached.MemcachedClient;
 import net.rubyeye.xmemcached.MemcachedClientBuilder;
 import net.rubyeye.xmemcached.XMemcachedClientBuilder;
+import net.rubyeye.xmemcached.command.BinaryCommandFactory;
 import net.rubyeye.xmemcached.exception.MemcachedException;
 import net.rubyeye.xmemcached.transcoders.Transcoder;
 import net.rubyeye.xmemcached.utils.AddrUtil;
@@ -233,6 +235,24 @@ public class MemcachedUtils {
             } else {
                 logger.warn("未找到统计连接是否空闲间隔设置！");
             }
+            logger.debug("协议设置...");
+            attr = el.attribute("commandFactory");
+            if (attr != null) {
+                String commandFactory = attr.getValue();
+                if (StringUtils.isNotBlank(commandFactory)) {
+                    try {
+                        config.builder.setCommandFactory((CommandFactory) Class.forName(commandFactory).newInstance());
+                        logger.debug("协议设置为：" + commandFactory);
+                    } catch (Exception e) {
+                        logger.error("协议设置参数错误！", e);
+                    }
+                } else {
+                    logger.error("协议设置参数错误！");
+                }
+            } else {
+                logger.warn("未找到协议设置！");
+            }
+            config.builder.setCommandFactory(new BinaryCommandFactory());
             logger.debug("网络设置...");
             nodeList = doc.selectNodes("/memcached/socketOption/*");
             if (!nodeList.isEmpty()) {

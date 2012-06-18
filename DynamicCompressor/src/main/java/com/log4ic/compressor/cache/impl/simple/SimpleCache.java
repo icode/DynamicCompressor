@@ -151,10 +151,9 @@ public class SimpleCache implements Serializable, Cache {
      */
     public static CacheFile writeContent(String key, String content, Compressor.FileType fileType,
                                          String cacheDir, long createDate) throws CacheException {
-
         CacheFile file = findCacheFile(key, fileType, cacheDir);
 
-        if (!file.getFile().exists() || file.getFile().lastModified() <= createDate) {
+        if (!file.getFile().exists() || file.getFile().lastModified() + 1000 < createDate) {
             logger.debug("尝试写入缓存文件....");
             File f = FileUtils.writeFile(content, file.getPath());
             logger.debug("写入缓存文件完毕!");

@@ -28,7 +28,8 @@
         optimizeMergeBuffer="true"
         enableHeartBeat="true"
         statisticsServer="true"
-        statisticsInterval="10000">
+        statisticsInterval="10000"
+        commandFactory="net.rubyeye.xmemcached.command.BinaryCommandFactory">
     <socketOption>
         <TCP_NODELAY type="java.lang.Boolean">true</TCP_NODELAY>
     </socketOption>

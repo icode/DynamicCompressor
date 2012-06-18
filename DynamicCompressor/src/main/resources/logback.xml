@@ -33,6 +33,8 @@
 
     <logger name="com.log4ic.compressor" level="TRACE"/>
     <logger name="com.google.code.yanf4j" level="ERROR"/>
+    <logger name="com.google.javascript" level="TRACE"/>
+    <logger name="com.google.common.css" level="TRACE"/>
 
     <root level="ERROR">
         <appender-ref ref="STDOUT" />

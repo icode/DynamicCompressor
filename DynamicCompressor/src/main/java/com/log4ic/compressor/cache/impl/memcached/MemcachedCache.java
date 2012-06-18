@@ -67,16 +67,11 @@ public class MemcachedCache implements Cache {
         this(key, type, dir);
         //将缓存写入文件
         buildProtobuf(content, fileType);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    writeContent();
-                } catch (CacheException e) {
-                    logger.error("写入缓存文件失败!", e);
-                }
-            }
-        }).start();
+        try {
+            writeContent();
+        } catch (CacheException e) {
+            logger.error("写入缓存文件失败!", e);
+        }
     }
 
     public MemcachedCache(String key, CacheFile file, CacheType type, String dir) throws CacheException {
@@ -87,17 +82,11 @@ public class MemcachedCache implements Cache {
     public MemcachedCache(String key, String dir, CacheType type, byte[] bytes) throws InvalidProtocolBufferException, CacheException {
         this(key, type, dir);
         buildProtobuf(bytes);
-        //异步写入文件
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    writeContent();
-                } catch (CacheException e) {
-                    logger.error("写入缓存文件失败!", e);
-                }
-            }
-        }).start();
+        try {
+            writeContent();
+        } catch (CacheException e) {
+            logger.error("写入缓存文件失败!", e);
+        }
     }
 
     private void writeContent() throws CacheException {
