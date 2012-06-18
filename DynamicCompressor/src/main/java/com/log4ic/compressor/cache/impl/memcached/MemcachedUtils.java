@@ -265,7 +265,6 @@ public class MemcachedUtils {
                     } catch (ClassNotFoundException e) {
                         logger.error("ClassNotFoundException", e);
                     }
-
                 }
             } else {
                 logger.warn("未找网络设置！");
