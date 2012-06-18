@@ -33,7 +33,8 @@ import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.cache.impl.simple.SimpleCache;
 import com.log4ic.compressor.utils.Compressor;
 import javolution.util.FastList;
-import net.spy.memcached.transcoders.LongTranscoder;
+import net.rubyeye.xmemcached.exception.MemcachedException;
+import net.rubyeye.xmemcached.transcoders.IntegerTranscoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
 /**
@@ -93,21 +95,21 @@ public class MemcachedCacheManager extends AbstractCacheManager {
     @Override
     public int getCacheSize() {
         try {
-            long size = MemcachedUtils.get(MEMCACHED_KEY_LIST_SIZE_NAME, new LongTranscoder());
-            return Integer.parseInt(size + "");
-        } catch (InvalidProtocolBufferException e) {
+            return MemcachedUtils.get(MEMCACHED_KEY_LIST_SIZE_NAME, new IntegerTranscoder());
+        } catch (InterruptedException e) {
             logger.error("获取键列表错误！", e);
-            return 0;
-        } catch (IOException e) {
+        } catch (TimeoutException e) {
             logger.error("获取键列表错误！", e);
-            return 0;
-        } /*finally {
+        } catch (MemcachedException e) {
+            logger.error("获取键列表错误！", e);
+        }/*finally {
             try {
                 MemcachedUtils.shutdown();
             } catch (IOException e) {
                 logger.error("close memcached client error", e);
             }
         }*/
+        return 0;
     }
 
     @Override
@@ -128,9 +130,13 @@ public class MemcachedCacheManager extends AbstractCacheManager {
         if (list.size() > 0) {
             Map<String, Object> map = null;
             try {
-                map = MemcachedUtils.getBulk(list);
-            } catch (IOException e) {
-                logger.error("IOException", e);
+                map = MemcachedUtils.get(list);
+            } catch (InterruptedException e) {
+                logger.error("InterruptedException", e);
+            } catch (TimeoutException e) {
+                logger.error("TimeoutException", e);
+            } catch (MemcachedException e) {
+                logger.error("MemcachedException", e);
             } /*finally {
                 try {
                     MemcachedUtils.shutdown();
@@ -171,9 +177,11 @@ public class MemcachedCacheManager extends AbstractCacheManager {
             //todo key list
         } catch (CacheException e) {
             logger.error("put cache exception", e);
-        } catch (InvalidProtocolBufferException e) {
+        } catch (InterruptedException e) {
             logger.error("put cacheKeyList exception", e);
-        } catch (IOException e) {
+        } catch (TimeoutException e) {
+            logger.error("put cacheKeyList exception", e);
+        } catch (MemcachedException e) {
             logger.error("put cacheKeyList exception", e);
         } /*finally {
             try {
@@ -195,9 +203,13 @@ public class MemcachedCacheManager extends AbstractCacheManager {
             }
         } catch (CacheException e) {
             logger.error("删除缓存出错", e);
-        } catch (IOException e) {
+        } catch (InterruptedException e) {
             logger.error("删除缓存出错", e);
-        } /*finally {
+        } catch (TimeoutException e) {
+            logger.error("删除缓存出错", e);
+        } catch (MemcachedException e) {
+            logger.error("删除缓存出错", e);
+        }/*finally {
             try {
                 MemcachedUtils.shutdown();
             } catch (IOException e) {
@@ -236,6 +248,12 @@ public class MemcachedCacheManager extends AbstractCacheManager {
         } catch (InvalidProtocolBufferException e) {
             logger.error("获取key错误", e);
         } catch (IOException e) {
+            logger.error("获取key错误", e);
+        } catch (InterruptedException e) {
+            logger.error("获取key错误", e);
+        } catch (TimeoutException e) {
+            logger.error("获取key错误", e);
+        } catch (MemcachedException e) {
             logger.error("获取key错误", e);
         } /*finally {
             try {

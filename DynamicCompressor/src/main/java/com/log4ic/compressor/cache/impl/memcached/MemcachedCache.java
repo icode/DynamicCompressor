@@ -32,12 +32,13 @@ import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.cache.impl.memcached.protobuf.MemcachedCacheProtobuf;
 import com.log4ic.compressor.cache.impl.simple.SimpleCache;
 import com.log4ic.compressor.utils.Compressor;
+import net.rubyeye.xmemcached.exception.MemcachedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Date;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author 张立鑫 IntelligentCode
@@ -164,7 +165,11 @@ public class MemcachedCache implements Cache {
         this.cacheFile = null;
         try {
             MemcachedUtils.delete(key);
-        } catch (IOException e) {
+        } catch (InterruptedException e) {
+            logger.error("删除缓存失败", e);
+        } catch (TimeoutException e) {
+            logger.error("删除缓存失败", e);
+        } catch (MemcachedException e) {
             logger.error("删除缓存失败", e);
         } /*finally {
             try {
@@ -188,7 +193,11 @@ public class MemcachedCache implements Cache {
             this.memcachedCache = cache;
             try {
                 MemcachedUtils.set(this.getKey(), 0, cache.toByteArray());
-            } catch (IOException e) {
+            } catch (InterruptedException e) {
+                logger.error("标记缓存过期失败!", e);
+            } catch (TimeoutException e) {
+                logger.error("标记缓存过期失败!", e);
+            } catch (MemcachedException e) {
                 logger.error("标记缓存过期失败!", e);
             } /*finally {
                 try {

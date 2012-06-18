@@ -25,14 +25,14 @@
 package com.log4ic.compressor.cache.impl.memcached;
 
 import com.log4ic.compressor.utils.FileUtils;
-import net.spy.memcached.*;
-import net.spy.memcached.internal.BulkFuture;
-import net.spy.memcached.internal.GetFuture;
-import net.spy.memcached.internal.OperationFuture;
-import net.spy.memcached.transcoders.Transcoder;
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.Node;
+import net.rubyeye.xmemcached.MemcachedClient;
+import net.rubyeye.xmemcached.MemcachedClientBuilder;
+import net.rubyeye.xmemcached.XMemcachedClientBuilder;
+import net.rubyeye.xmemcached.exception.MemcachedException;
+import net.rubyeye.xmemcached.transcoders.Transcoder;
+import net.rubyeye.xmemcached.utils.AddrUtil;
+import org.apache.commons.lang3.StringUtils;
+import org.dom4j.*;
 import org.dom4j.io.SAXReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,11 +41,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.util.*;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author 张立鑫 IntelligentCode
@@ -57,9 +56,13 @@ public class MemcachedUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(MemcachedUtils.class);
 
-    private static StringBuilder serverStringBuilder = new StringBuilder();
+    private static String CONFIG_FILE_PATH = "/memcached.xml";
 
-    private static String CONFIG_FILE_PATH = "/memcached-servers.xml";
+    private static MemcachedClient client;
+
+
+    private static final byte[] lock = new byte[0];
+
 
     public static void setConfigFile(File file) throws FileNotFoundException {
         if (file.exists() && file.isFile()) {
@@ -69,1407 +72,251 @@ public class MemcachedUtils {
         }
     }
 
-    //设置MemcachedClient的日志器
-    static {
-        logger.debug("读取Memcached配置文件:" + CONFIG_FILE_PATH);
-        InputStream in = FileUtils.getResourceAsStream(CONFIG_FILE_PATH);
-        if (in == null) {
-            CONFIG_FILE_PATH = "/conf" + CONFIG_FILE_PATH;
-            logger.debug("读取Memcached配置文件:" + CONFIG_FILE_PATH);
-            in = FileUtils.getResourceAsStream(CONFIG_FILE_PATH);
-        }
-        if (in == null) {
-            logger.error(CONFIG_FILE_PATH + " file not exists!");
+
+    private static class MemcachedConfig {
+        private MemcachedClientBuilder builder;
+        private boolean enableHeartBeat = true;
+        private int mergeFactor = 150;
+        private boolean optimizeMergeBuffer = true;
+    }
+
+    private static MemcachedConfig getMemcachedConfig(InputStream in) throws DocumentException {
+        SAXReader reader = new SAXReader();
+        StringBuilder serverStringBuilder = new StringBuilder();
+
+        MemcachedConfig config = new MemcachedConfig();
+
+        Document doc = reader.read(in);
+
+        logger.debug("读取服务器列表...");
+        List<Node> nodeList = doc.selectNodes("/memcached/servers/server");
+        if (nodeList.isEmpty()) {
+            throw new DocumentException(CONFIG_FILE_PATH + " file memcached.servers server element empty!");
         } else {
-            SAXReader reader = new SAXReader();
-            Document doc = null;
-
-            try {
-                doc = reader.read(in);
-            } catch (DocumentException e) {
-                logger.error(CONFIG_FILE_PATH + " file DocumentException!", e);
+            for (Node node : nodeList) {
+                serverStringBuilder.append(node.selectSingleNode("host").getText());
+                serverStringBuilder.append(":");
+                serverStringBuilder.append(node.selectSingleNode("port").getText());
+                serverStringBuilder.append(" ");
             }
 
-            if (doc != null) {
-                logger.debug("读取服务器列表...");
-                List<Node> nodeList = doc.selectNodes("/memcached/servers/server");
-                if (nodeList.isEmpty()) {
-                    logger.error(CONFIG_FILE_PATH + " file memcached.servers server element empty!");
-                }
+            serverStringBuilder.deleteCharAt(serverStringBuilder.length() - 1);
 
-                for (Node node : nodeList) {
-                    serverStringBuilder.append(node.selectSingleNode("host").getText());
-                    serverStringBuilder.append(":");
-                    serverStringBuilder.append(node.selectSingleNode("port").getText());
-                    serverStringBuilder.append(" ");
-                }
+            logger.debug("读取服务器列表完成，共" + nodeList.size() + "个节点.");
 
-                serverStringBuilder.deleteCharAt(serverStringBuilder.length() - 1);
+            config.builder = new XMemcachedClientBuilder(AddrUtil.getAddresses(serverStringBuilder.toString()));
 
-                logger.debug("读取服务器列表完成，共" + nodeList.size() + "个节点.");
-
-                logger.debug("配置MemcachedClient日志器 " + CONFIG_FILE_PATH + "!/memcached/logger ...");
-                Node node = doc.selectSingleNode("/memcached/logger");
-                if (node != null) {
-                    String className = node.getText();
-                    logger.debug("发现MemcachedClient日志器配置:" + className + ";应用配置...");
-                    Properties systemProperties = System.getProperties();
-                    systemProperties.put("net.spy.log.LoggerImpl", className);
-                    System.setProperties(systemProperties);
-                } else {
-                    logger.warn("未发现MemcachedClient日志器配置!");
-                }
-
-                Runtime.getRuntime().addShutdownHook(new Thread() {
-                    public void run() {
-                        if (client != null && !client.isShuttingDown())
-                            client.shutdown();
+            Element el = (Element) doc.selectSingleNode("/memcached");
+            logger.debug("读取连接池大小设置...");
+            Attribute attr = el.attribute("connectionPoolSize");
+            if (attr != null) {
+                String connPoolSize = attr.getValue();
+                if (StringUtils.isNotBlank(connPoolSize)) {
+                    try {
+                        config.builder.setConnectionPoolSize(Integer.parseInt(connPoolSize));
+                        logger.debug("连接池大小设置为：" + connPoolSize);
+                    } catch (Exception e) {
+                        logger.error("连接池大小设置参数错误！", e);
                     }
-                });
+                } else {
+                    logger.error("连接池大小设置参数错误！");
+                }
+            } else {
+                logger.warn("未找到连接池大小设置！");
+            }
+            logger.debug("启用空闲并发起心跳检测设置...");
+            attr = el.attribute("enableHeartBeat");
+            if (attr != null) {
+                String enableHeartBeatS = attr.getValue();
+                if (StringUtils.isNotBlank(enableHeartBeatS)) {
+                    try {
+                        config.enableHeartBeat = Boolean.parseBoolean(enableHeartBeatS);
+                        logger.debug("是否启用空闲并发起心跳检测设置为：" + enableHeartBeatS);
+                    } catch (Exception e) {
+                        logger.error("是否启用空闲并发起心跳检测设置参数错误！", e);
+                    }
+                } else {
+                    logger.error("是否启用空闲并发起心跳检测设置参数错误！");
+                }
+            } else {
+                logger.warn("未找到是否启用空闲并发起心跳检测设置！");
+            }
+            logger.debug("空闲并发起心跳检测时间设置...");
+            attr = el.attribute("sessionIdleTimeout");
+            if (attr != null) {
+                String sessionIdleTimeout = attr.getValue();
+                if (StringUtils.isNotBlank(sessionIdleTimeout)) {
+                    try {
+                        config.builder.getConfiguration().
+                                setSessionIdleTimeout(Long.parseLong(sessionIdleTimeout));
+                        logger.debug("空闲并发起心跳检测时间设置为：" + sessionIdleTimeout);
+                    } catch (Exception e) {
+                        logger.error("空闲并发起心跳检测时间设置参数错误！", e);
+                    }
+                } else {
+                    logger.error("空闲并发起心跳检测时间设置参数错误！");
+                }
+            } else {
+                logger.warn("未找到空闲并发起心跳检测设置！");
+            }
+            //统计连接是否空闲
+            logger.debug("统计连接是否空闲设置...");
+            attr = el.attribute("statisticsServer");
+            if (attr != null) {
+                String statisticsServer = attr.getValue();
+                if (StringUtils.isNotBlank(statisticsServer)) {
+                    try {
+                        config.builder.getConfiguration().
+                                setStatisticsServer(Boolean.parseBoolean(statisticsServer));
+                        logger.debug("统计连接是否空闲设置为：" + statisticsServer);
+                    } catch (Exception e) {
+                        logger.error("统计连接是否空闲设置参数错误！", e);
+                    }
+                } else {
+                    logger.error("统计连接是否空闲设置参数错误！");
+                }
+            } else {
+                logger.warn("未找到统计连接是否空闲设置！");
+            }
+            logger.debug("统计连接是否空闲间隔设置...");
+            attr = el.attribute("statisticsInterval");
+            if (attr != null) {
+                String statisticsInterval = attr.getValue();
+                if (StringUtils.isNotBlank(statisticsInterval)) {
+                    try {
+                        config.builder.getConfiguration().
+                                setStatisticsInterval(Long.parseLong(statisticsInterval));
+                        logger.debug("统计连接是否空闲间隔设置为：" + statisticsInterval);
+                    } catch (Exception e) {
+                        logger.error("统计连接是否空闲间隔设置参数错误！", e);
+                    }
+                } else {
+                    logger.error("统计连接是否空闲间隔设置参数错误！");
+                }
+            } else {
+                logger.warn("未找到统计连接是否空闲间隔设置！");
+            }
+            logger.debug("是否启用合并因子设置...");
+            attr = el.attribute("optimizeMergeBuffer");
+            if (attr != null) {
+                String optimizeMergeBufferS = attr.getValue();
+                if (StringUtils.isNotBlank(optimizeMergeBufferS)) {
+                    try {
+                        config.optimizeMergeBuffer = Boolean.parseBoolean(optimizeMergeBufferS);
+                        logger.debug("是否启用合并因子设置为：" + optimizeMergeBufferS);
+                    } catch (Exception e) {
+                        logger.error("是否启用合并因子设置参数错误！", e);
+                    }
+                } else {
+                    logger.error("是否启用合并因子设置参数错误！");
+                }
+            } else {
+                logger.warn("是否启用合并因子设置！");
+            }
+            logger.debug("合并请求因子数目设置...");
+            attr = el.attribute("mergeFactor");
+            if (attr != null) {
+                String mergeFactorS = attr.getValue();
+                if (StringUtils.isNotBlank(mergeFactorS)) {
+                    try {
+                        config.mergeFactor = Integer.parseInt(mergeFactorS);
+                        logger.debug("统计连接是否空闲间隔设置为：" + mergeFactorS);
+                    } catch (Exception e) {
+                        logger.error("统计连接是否空闲间隔设置参数错误！", e);
+                    }
+                } else {
+                    logger.error("统计连接是否空闲间隔设置参数错误！");
+                }
+            } else {
+                logger.warn("未找到统计连接是否空闲间隔设置！");
             }
         }
+        return config;
     }
 
-    public static MemcachedClient getMemcachedClient() throws IOException {
-        return new MemcachedClient(new BinaryConnectionFactory(), serverList);
+    public static MemcachedClient getMemcachedClient(InputStream in) throws DocumentException, IOException {
+        MemcachedConfig config = getMemcachedConfig(in);
+        MemcachedClient mc = config.builder.build();
+        mc.setEnableHeartBeat(config.enableHeartBeat);
+        mc.setOptimizeMergeBuffer(config.optimizeMergeBuffer);
+        mc.setMergeFactor(config.mergeFactor);
+        return mc;
     }
 
-    private static class MemcachedClientX extends MemcachedClient {
-        public boolean isShuttingDown() {
-            return this.shuttingDown;
-        }
 
-        public MemcachedClientX(InetSocketAddress... ia) throws IOException {
-            super(ia);
-        }
-
-        public MemcachedClientX(List<InetSocketAddress> addrs) throws IOException {
-            super(addrs);
-        }
-
-        public MemcachedClientX(ConnectionFactory cf, List<InetSocketAddress> addrs) throws IOException {
-            super(cf, addrs);
-        }
-    }
-
-    private static final ConnectionFactory connectionFactory = new BinaryConnectionFactory();
-
-    private static final List<InetSocketAddress> serverList = AddrUtil.getAddresses(serverStringBuilder.toString());
-
-    private static MemcachedClientX client;
-
-
-    public static MemcachedClient getSingleMemcachedClient() throws IOException {
+    public static MemcachedClient getSingleMemcachedClient() {
         if (client == null) {
-            synchronized (connectionFactory) {
-                if (client == null || client.isShuttingDown()) {
-                    client = new MemcachedClientX(connectionFactory, serverList);
+            synchronized (lock) {
+                if (client == null || client.isShutdown()) {
+                    try {
+                        logger.debug("读取Memcached配置文件:" + CONFIG_FILE_PATH);
+                        InputStream in = FileUtils.getResourceAsStream(CONFIG_FILE_PATH);
+                        if (in == null) {
+                            CONFIG_FILE_PATH = "/conf" + CONFIG_FILE_PATH;
+                            logger.debug("读取Memcached配置文件:" + CONFIG_FILE_PATH);
+                            in = FileUtils.getResourceAsStream(CONFIG_FILE_PATH);
+                        }
+                        if (in == null) {
+                            logger.error(CONFIG_FILE_PATH + " file not exists!");
+                        } else {
+                            try {
+                                client = getMemcachedClient(in);
+                            } catch (DocumentException e) {
+                                logger.error("", e);
+                            } finally {
+                                in.close();
+                            }
+                        }
+                    } catch (IOException e) {
+                        logger.error("构建memcached客户端失败！", e);
+                    }
                 }
             }
         }
         return client;
     }
 
-    /**
-     * Get the addresses of available servers.
-     * <p/>
-     * <p>
-     * This is based on a snapshot in time so shouldn't be considered completely
-     * accurate, but is a useful for getting a feel for what's working and what's
-     * not working.
-     * </p>
-     *
-     * @return point-in-time view of currently available servers
-     */
-    public static Collection<SocketAddress> getAvailableServers() throws IOException {
-        return getSingleMemcachedClient().getAvailableServers();
+
+    public static <T> T get(final String key, final long timeout, final Transcoder<T> transcoder) throws MemcachedException, TimeoutException, InterruptedException {
+        return getSingleMemcachedClient().get(key, timeout, transcoder);
     }
 
-    /**
-     * Get the addresses of unavailable servers.
-     * <p/>
-     * <p>
-     * This is based on a snapshot in time so shouldn't be considered completely
-     * accurate, but is a useful for getting a feel for what's working and what's
-     * not working.
-     * </p>
-     *
-     * @return point-in-time view of currently available servers
-     */
-    public static Collection<SocketAddress> getUnavailableServers() throws IOException {
-        return getSingleMemcachedClient().getUnavailableServers();
+    public static <T> T get(final String key, final Transcoder<T> transcoder) throws MemcachedException, TimeoutException, InterruptedException {
+        return getSingleMemcachedClient().get(key, transcoder);
     }
 
-    /**
-     * Get a read-only wrapper around the node locator wrapping this instance.
-     *
-     * @return this instance's NodeLocator
-     */
-    public static NodeLocator getNodeLocator() throws IOException {
-        return getSingleMemcachedClient().getNodeLocator();
-    }
-
-    /**
-     * Get the default transcoder that's in use.
-     *
-     * @return this instance's Transcoder
-     */
-    public static Transcoder<Object> getTranscoder() throws IOException {
-        return getSingleMemcachedClient().getTranscoder();
-    }
-
-    /**
-     * Touch the given key to reset its expiration time with the default
-     * transcoder.
-     *
-     * @param key the key to fetch
-     * @param exp the new expiration to set for the given key
-     * @return a future that will hold the return value of whether or not the
-     *         fetch succeeded
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<Boolean> touch(final String key, final int exp) throws IOException {
-        return getSingleMemcachedClient().touch(key, exp);
-    }
-
-    /**
-     * Touch the given key to reset its expiration time.
-     *
-     * @param key the key to fetch
-     * @param exp the new expiration to set for the given key
-     * @param tc  the transcoder to serialize and unserialize value
-     * @return a future that will hold the return value of whether or not the
-     *         fetch succeeded
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<Boolean> touch(final String key, final int exp,
-                                                     final Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().touch(key, exp, tc);
-    }
-
-    /**
-     * Append to an existing value in the cache.
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     *
-     * @param cas cas identifier (ignored in the ascii protocol)
-     * @param key the key to whose value will be appended
-     * @param val the value to append
-     * @return a future indicating success, false if there was no change to the
-     *         value
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> append(long cas, String key, Object val) throws IOException {
-        return getSingleMemcachedClient().append(cas, key, val);
-    }
-
-    /**
-     * Append to an existing value in the cache.
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     *
-     * @param <T>
-     * @param cas cas identifier (ignored in the ascii protocol)
-     * @param key the key to whose value will be appended
-     * @param val the value to append
-     * @param tc  the transcoder to serialize and unserialize the value
-     * @return a future indicating success
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<Boolean> append(long cas, String key, T val,
-                                                      Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().append(cas, key, val, tc);
-    }
-
-    /**
-     * Prepend to an existing value in the cache.
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     *
-     * @param cas cas identifier (ignored in the ascii protocol)
-     * @param key the key to whose value will be prepended
-     * @param val the value to append
-     * @return a future indicating success
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> prepend(long cas, String key, Object val) throws IOException {
-        return getSingleMemcachedClient().prepend(cas, key, val);
-    }
-
-    /**
-     * Prepend to an existing value in the cache.
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     *
-     * @param <T>
-     * @param cas cas identifier (ignored in the ascii protocol)
-     * @param key the key to whose value will be prepended
-     * @param val the value to append
-     * @param tc  the transcoder to serialize and unserialize the value
-     * @return a future indicating success
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<Boolean> prepend(long cas, String key, T val,
-                                                       Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().prepend(cas, key, val, tc);
-    }
-
-    /**
-     * Asynchronous CAS operation.
-     *
-     * @param <T>
-     * @param key   the key
-     * @param casId the CAS identifier (from a gets operation)
-     * @param value the new value
-     * @param tc    the transcoder to serialize and unserialize the value
-     * @return a future that will indicate the status of the CAS
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> Future<CASResponse> asyncCAS(String key, long casId, T value,
-                                                   Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().asyncCAS(key, casId, value, tc);
-    }
-
-    /**
-     * Asynchronous CAS operation.
-     *
-     * @param <T>
-     * @param key   the key
-     * @param casId the CAS identifier (from a gets operation)
-     * @param exp   the expiration of this object
-     * @param value the new value
-     * @param tc    the transcoder to serialize and unserialize the value
-     * @return a future that will indicate the status of the CAS
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> Future<CASResponse> asyncCAS(String key, long casId, int exp,
-                                                   T value, Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().asyncCAS(key, casId, exp, value, tc);
-    }
-
-    /**
-     * Asynchronous CAS operation using the default transcoder.
-     *
-     * @param key   the key
-     * @param casId the CAS identifier (from a gets operation)
-     * @param value the new value
-     * @return a future that will indicate the status of the CAS
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static Future<CASResponse> asyncCAS(String key, long casId, Object value) throws IOException {
-        return getSingleMemcachedClient().asyncCAS(key, casId, value);
-    }
-
-    /**
-     * Perform a synchronous CAS operation.
-     *
-     * @param <T>
-     * @param key   the key
-     * @param casId the CAS identifier (from a gets operation)
-     * @param value the new value
-     * @param tc    the transcoder to serialize and unserialize the value
-     * @return a CASResponse
-     * @throws OperationTimeoutException if global operation timeout is exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> CASResponse cas(String key, long casId, T value,
-                                      Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().cas(key, casId, value, tc);
-    }
-
-    /**
-     * Perform a synchronous CAS operation.
-     *
-     * @param <T>
-     * @param key   the key
-     * @param casId the CAS identifier (from a gets operation)
-     * @param exp   the expiration of this object
-     * @param value the new value
-     * @param tc    the transcoder to serialize and unserialize the value
-     * @return a CASResponse
-     * @throws OperationTimeoutException if global operation timeout is exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> CASResponse cas(String key, long casId, int exp, T value,
-                                      Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().cas(key, casId, exp, value, tc);
-    }
-
-    /**
-     * Perform a synchronous CAS operation with the default transcoder.
-     *
-     * @param key   the key
-     * @param casId the CAS identifier (from a gets operation)
-     * @param value the new value
-     * @return a CASResponse
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static CASResponse cas(String key, long casId, Object value) throws IOException {
-        return getSingleMemcachedClient().cas(key, casId, value);
-    }
-
-    /**
-     * Add an object to the cache iff it does not exist already.
-     * <p/>
-     * <p>
-     * The <code>exp</code> value is passed along to memcached exactly as given,
-     * and will be processed per the memcached protocol specification:
-     * </p>
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     * <p/>
-     * <blockquote>
-     * <p>
-     * The actual value sent may either be Unix time (number of seconds since
-     * January 1, 1970, as a 32-bit value), or a number of seconds starting from
-     * current time. In the latter case, this number of seconds may not exceed
-     * 60*60*24*30 (number of seconds in 30 days); if the number sent by a client
-     * is larger than that, the server will consider it to be real Unix time value
-     * rather than an offset from current time.
-     * </p>
-     * </blockquote>
-     *
-     * @param <T>
-     * @param key the key under which this object should be added.
-     * @param exp the expiration of this object
-     * @param o   the object to store
-     * @param tc  the transcoder to serialize and unserialize the value
-     * @return a future representing the processing of this operation
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<Boolean> add(String key, int exp, T o,
-                                                   Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().add(key, exp, o, tc);
-    }
-
-    /**
-     * Add an object to the cache (using the default transcoder) iff it does not
-     * exist already.
-     * <p/>
-     * <p>
-     * The <code>exp</code> value is passed along to memcached exactly as given,
-     * and will be processed per the memcached protocol specification:
-     * </p>
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     * <p/>
-     * <blockquote>
-     * <p>
-     * The actual value sent may either be Unix time (number of seconds since
-     * January 1, 1970, as a 32-bit value), or a number of seconds starting from
-     * current time. In the latter case, this number of seconds may not exceed
-     * 60*60*24*30 (number of seconds in 30 days); if the number sent by a client
-     * is larger than that, the server will consider it to be real Unix time value
-     * rather than an offset from current time.
-     * </p>
-     * </blockquote>
-     *
-     * @param key the key under which this object should be added.
-     * @param exp the expiration of this object
-     * @param o   the object to store
-     * @return a future representing the processing of this operation
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> add(String key, int exp, Object o) throws IOException {
-        return getSingleMemcachedClient().add(key, exp, o);
-    }
-
-    /**
-     * Set an object in the cache regardless of any existing value.
-     * <p/>
-     * <p>
-     * The <code>exp</code> value is passed along to memcached exactly as given,
-     * and will be processed per the memcached protocol specification:
-     * </p>
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     * <p/>
-     * <blockquote>
-     * <p>
-     * The actual value sent may either be Unix time (number of seconds since
-     * January 1, 1970, as a 32-bit value), or a number of seconds starting from
-     * current time. In the latter case, this number of seconds may not exceed
-     * 60*60*24*30 (number of seconds in 30 days); if the number sent by a client
-     * is larger than that, the server will consider it to be real Unix time value
-     * rather than an offset from current time.
-     * </p>
-     * </blockquote>
-     *
-     * @param <T>
-     * @param key the key under which this object should be added.
-     * @param exp the expiration of this object
-     * @param o   the object to store
-     * @param tc  the transcoder to serialize and unserialize the value
-     * @return a future representing the processing of this operation
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<Boolean> set(String key, int exp, T o,
-                                                   Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().set(key, exp, o, tc);
-    }
-
-    /**
-     * Set an object in the cache (using the default transcoder) regardless of any
-     * existing value.
-     * <p/>
-     * <p>
-     * The <code>exp</code> value is passed along to memcached exactly as given,
-     * and will be processed per the memcached protocol specification:
-     * </p>
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     * <p/>
-     * <blockquote>
-     * <p>
-     * The actual value sent may either be Unix time (number of seconds since
-     * January 1, 1970, as a 32-bit value), or a number of seconds starting from
-     * current time. In the latter case, this number of seconds may not exceed
-     * 60*60*24*30 (number of seconds in 30 days); if the number sent by a client
-     * is larger than that, the server will consider it to be real Unix time value
-     * rather than an offset from current time.
-     * </p>
-     * </blockquote>
-     *
-     * @param key the key under which this object should be added.
-     * @param exp the expiration of this object
-     * @param o   the object to store
-     * @return a future representing the processing of this operation
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> set(String key, int exp, Object o) throws IOException {
-        return getSingleMemcachedClient().set(key, exp, o);
-    }
-
-    /**
-     * Replace an object with the given value iff there is already a value for the
-     * given key.
-     * <p/>
-     * <p>
-     * The <code>exp</code> value is passed along to memcached exactly as given,
-     * and will be processed per the memcached protocol specification:
-     * </p>
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     * <p/>
-     * <blockquote>
-     * <p>
-     * The actual value sent may either be Unix time (number of seconds since
-     * January 1, 1970, as a 32-bit value), or a number of seconds starting from
-     * current time. In the latter case, this number of seconds may not exceed
-     * 60*60*24*30 (number of seconds in 30 days); if the number sent by a client
-     * is larger than that, the server will consider it to be real Unix time value
-     * rather than an offset from current time.
-     * </p>
-     * </blockquote>
-     *
-     * @param <T>
-     * @param key the key under which this object should be added.
-     * @param exp the expiration of this object
-     * @param o   the object to store
-     * @param tc  the transcoder to serialize and unserialize the value
-     * @return a future representing the processing of this operation
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<Boolean> replace(String key, int exp, T o,
-                                                       Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().replace(key, exp, o, tc);
-    }
-
-    /**
-     * Replace an object with the given value (transcoded with the default
-     * transcoder) iff there is already a value for the given key.
-     * <p/>
-     * <p>
-     * The <code>exp</code> value is passed along to memcached exactly as given,
-     * and will be processed per the memcached protocol specification:
-     * </p>
-     * <p/>
-     * <p>
-     * Note that the return will be false any time a mutation has not occurred.
-     * </p>
-     * <p/>
-     * <blockquote>
-     * <p>
-     * The actual value sent may either be Unix time (number of seconds since
-     * January 1, 1970, as a 32-bit value), or a number of seconds starting from
-     * current time. In the latter case, this number of seconds may not exceed
-     * 60*60*24*30 (number of seconds in 30 days); if the number sent by a client
-     * is larger than that, the server will consider it to be real Unix time value
-     * rather than an offset from current time.
-     * </p>
-     * </blockquote>
-     *
-     * @param key the key under which this object should be added.
-     * @param exp the expiration of this object
-     * @param o   the object to store
-     * @return a future representing the processing of this operation
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> replace(String key, int exp, Object o) throws IOException {
-        return getSingleMemcachedClient().replace(key, exp, o);
-    }
-
-    /**
-     * Get the given key asynchronously.
-     *
-     * @param <T>
-     * @param key the key to fetch
-     * @param tc  the transcoder to serialize and unserialize value
-     * @return a future that will hold the return value of the fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> GetFuture<T> asyncGet(final String key, final Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().asyncGet(key, tc);
-    }
-
-    /**
-     * Get the given key asynchronously and decode with the default transcoder.
-     *
-     * @param key the key to fetch
-     * @return a future that will hold the return value of the fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static GetFuture<Object> asyncGet(final String key) throws IOException {
-        return getSingleMemcachedClient().asyncGet(key);
-    }
-
-    /**
-     * Gets (with CAS support) the given key asynchronously.
-     *
-     * @param <T>
-     * @param key the key to fetch
-     * @param tc  the transcoder to serialize and unserialize value
-     * @return a future that will hold the return value of the fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<CASValue<T>> asyncGets(final String key,
-                                                             final Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().asyncGets(key, tc);
-    }
-
-    /**
-     * Gets (with CAS support) the given key asynchronously and decode using the
-     * default transcoder.
-     *
-     * @param key the key to fetch
-     * @return a future that will hold the return value of the fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<CASValue<Object>> asyncGets(final String key) throws IOException {
-        return getSingleMemcachedClient().asyncGets(key);
-    }
-
-    /**
-     * Gets (with CAS support) with a single key.
-     *
-     * @param <T>
-     * @param key the key to get
-     * @param tc  the transcoder to serialize and unserialize value
-     * @return the result from the cache and CAS id (null if there is none)
-     * @throws OperationTimeoutException if global operation timeout is exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> CASValue<T> gets(String key, Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().gets(key, tc);
-    }
-
-    /**
-     * Get with a single key and reset its expiration.
-     *
-     * @param <T>
-     * @param key the key to get
-     * @param exp the new expiration for the key
-     * @param tc  the transcoder to serialize and unserialize value
-     * @return the result from the cache (null if there is none)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> CASValue<T> getAndTouch(String key, int exp, Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().getAndTouch(key, exp, tc);
-    }
-
-    /**
-     * Get a single key and reset its expiration using the default transcoder.
-     *
-     * @param key the key to get
-     * @param exp the new expiration for the key
-     * @return the result from the cache and CAS id (null if there is none)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static CASValue<Object> getAndTouch(String key, int exp) throws IOException {
-        return getSingleMemcachedClient().getAndTouch(key, exp);
-    }
-
-    /**
-     * Gets (with CAS support) with a single key using the default transcoder.
-     *
-     * @param key the key to get
-     * @return the result from the cache and CAS id (null if there is none)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static CASValue<Object> gets(String key) throws IOException {
-        return getSingleMemcachedClient().gets(key);
-    }
-
-    /**
-     * Get with a single key.
-     *
-     * @param <T>
-     * @param key the key to get
-     * @param tc  the transcoder to serialize and unserialize value
-     * @return the result from the cache (null if there is none)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> T get(String key, Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().get(key, tc);
-    }
-
-    /**
-     * Get with a single key and decode using the default transcoder.
-     *
-     * @param key the key to get
-     * @return the result from the cache (null if there is none)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static Object get(String key) throws IOException {
+    public static <T> T get(final String key) throws MemcachedException, TimeoutException, InterruptedException {
         return getSingleMemcachedClient().get(key);
     }
 
-    /**
-     * Asynchronously get a bunch of objects from the cache.
-     *
-     * @param <T>
-     * @param keyIter Iterator that produces keys.
-     * @param tcIter  an iterator of transcoders to serialize and unserialize
-     *                values; the transcoders are matched with the keys in the same
-     *                order. The minimum of the key collection length and number of
-     *                transcoders is used and no exception is thrown if they do not
-     *                match
-     * @return a Future result of that fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public <T> BulkFuture<Map<String, T>> asyncGetBulk(Iterator<String> keyIter,
-                                                       Iterator<Transcoder<T>> tcIter) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(keyIter, tcIter);
+    public static <T> Map<String, T> get(final Collection<String> keyCollections)
+            throws TimeoutException, InterruptedException, MemcachedException {
+        return getSingleMemcachedClient().get(keyCollections);
     }
 
-    /**
-     * Asynchronously get a bunch of objects from the cache.
-     *
-     * @param <T>
-     * @param keys   the keys to request
-     * @param tcIter an iterator of transcoders to serialize and unserialize
-     *               values; the transcoders are matched with the keys in the same
-     *               order. The minimum of the key collection length and number of
-     *               transcoders is used and no exception is thrown if they do not
-     *               match
-     * @return a Future result of that fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Collection<String> keys,
-                                                              Iterator<Transcoder<T>> tcIter) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(keys, tcIter);
+    public static boolean set(final String key, final int exp, final Object value)
+            throws TimeoutException, InterruptedException, MemcachedException {
+        return getSingleMemcachedClient().set(key, exp, value);
     }
 
-    /**
-     * Asynchronously get a bunch of objects from the cache.
-     *
-     * @param <T>
-     * @param keyIter Iterator for the keys to request
-     * @param tc      the transcoder to serialize and unserialize values
-     * @return a Future result of that fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Iterator<String> keyIter,
-                                                              Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(keyIter, tc);
+    public static void setWithNoReply(final String key, final int exp,
+                                      final Object value) throws InterruptedException, MemcachedException {
+        getSingleMemcachedClient().setWithNoReply(key, exp, value);
     }
 
-    /**
-     * Asynchronously get a bunch of objects from the cache.
-     *
-     * @param <T>
-     * @param keys the keys to request
-     * @param tc   the transcoder to serialize and unserialize values
-     * @return a Future result of that fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Collection<String> keys,
-                                                              Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(keys, tc);
-    }
-
-    /**
-     * Asynchronously get a bunch of objects from the cache and decode them with
-     * the given transcoder.
-     *
-     * @param keyIter Iterator that produces the keys to request
-     * @return a Future result of that fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static BulkFuture<Map<String, Object>> asyncGetBulk(
-            Iterator<String> keyIter) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(keyIter);
-    }
-
-    /**
-     * Asynchronously get a bunch of objects from the cache and decode them with
-     * the given transcoder.
-     *
-     * @param keys the keys to request
-     * @return a Future result of that fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static BulkFuture<Map<String, Object>> asyncGetBulk(Collection<String> keys) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(keys);
-    }
-
-    /**
-     * Varargs wrapper for asynchronous bulk gets.
-     *
-     * @param <T>
-     * @param tc   the transcoder to serialize and unserialize value
-     * @param keys one more more keys to get
-     * @return the future values of those keys
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> BulkFuture<Map<String, T>> asyncGetBulk(Transcoder<T> tc,
-                                                              String... keys) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(tc, keys);
-    }
-
-    /**
-     * Varargs wrapper for asynchronous bulk gets with the default transcoder.
-     *
-     * @param keys one more more keys to get
-     * @return the future values of those keys
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static BulkFuture<Map<String, Object>> asyncGetBulk(String... keys) throws IOException {
-        return getSingleMemcachedClient().asyncGetBulk(keys);
-    }
-
-    /**
-     * Get the given key to reset its expiration time.
-     *
-     * @param key the key to fetch
-     * @param exp the new expiration to set for the given key
-     * @return a future that will hold the return value of the fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<CASValue<Object>> asyncGetAndTouch(final String key,
-                                                                     final int exp) throws IOException {
-        return getSingleMemcachedClient().asyncGetAndTouch(key, exp);
-    }
-
-    /**
-     * Get the given key to reset its expiration time.
-     *
-     * @param key the key to fetch
-     * @param exp the new expiration to set for the given key
-     * @param tc  the transcoder to serialize and unserialize value
-     * @return a future that will hold the return value of the fetch
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static <T> OperationFuture<CASValue<T>> asyncGetAndTouch(final String key,
-                                                                    final int exp, final Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().asyncGetAndTouch(key, exp, tc);
-    }
-
-    /**
-     * Get the values for multiple keys from the cache.
-     *
-     * @param <T>
-     * @param keyIter Iterator that produces the keys
-     * @param tc      the transcoder to serialize and unserialize value
-     * @return a map of the values (for each value that exists)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> Map<String, T> getBulk(Iterator<String> keyIter,
-                                             Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().getBulk(keyIter, tc);
-    }
-
-    /**
-     * Get the values for multiple keys from the cache.
-     *
-     * @param keyIter Iterator that produces the keys
-     * @return a map of the values (for each value that exists)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static Map<String, Object> getBulk(Iterator<String> keyIter) throws IOException {
-        return getSingleMemcachedClient().getBulk(keyIter);
-    }
-
-    /**
-     * Get the values for multiple keys from the cache.
-     *
-     * @param <T>
-     * @param keys the keys
-     * @param tc   the transcoder to serialize and unserialize value
-     * @return a map of the values (for each value that exists)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> Map<String, T> getBulk(Collection<String> keys,
-                                             Transcoder<T> tc) throws IOException {
-        return getSingleMemcachedClient().getBulk(keys, tc);
-    }
-
-    /**
-     * Get the values for multiple keys from the cache.
-     *
-     * @param keys the keys
-     * @return a map of the values (for each value that exists)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static Map<String, Object> getBulk(Collection<String> keys) throws IOException {
-        return getSingleMemcachedClient().getBulk(keys);
-    }
-
-    /**
-     * Get the values for multiple keys from the cache.
-     *
-     * @param <T>
-     * @param tc   the transcoder to serialize and unserialize value
-     * @param keys the keys
-     * @return a map of the values (for each value that exists)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static <T> Map<String, T> getBulk(Transcoder<T> tc, String... keys) throws IOException {
-        return getSingleMemcachedClient().getBulk(tc, keys);
-    }
-
-    /**
-     * Get the values for multiple keys from the cache.
-     *
-     * @param keys the keys
-     * @return a map of the values (for each value that exists)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static Map<String, Object> getBulk(String... keys) throws IOException {
-        return getSingleMemcachedClient().getBulk(keys);
-    }
-
-    /**
-     * Get the versions of all of the connected memcacheds.
-     *
-     * @return a Map of SocketAddress to String for connected servers
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static Map<SocketAddress, String> getVersions() throws IOException {
-        return getSingleMemcachedClient().getVersions();
-    }
-
-    /**
-     * Get all of the stats from all of the connections.
-     *
-     * @return a Map of a Map of stats replies by SocketAddress
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static Map<SocketAddress, Map<String, String>> getStats() throws IOException {
-        return getSingleMemcachedClient().getStats();
-    }
-
-    /**
-     * Get a set of stats from all connections.
-     *
-     * @param arg which stats to get
-     * @return a Map of the server SocketAddress to a map of String stat keys to
-     *         String stat values.
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static Map<SocketAddress, Map<String, String>> getStats(final String arg) throws IOException {
-        return getSingleMemcachedClient().getStats(arg);
-    }
-
-    /**
-     * Increment the given key by the given amount.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the amount to increment
-     * @return the new value (-1 if the key doesn't exist)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long incr(String key, long by) throws IOException {
-        return getSingleMemcachedClient().incr(key, by);
-    }
-
-    /**
-     * Increment the given key by the given amount.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the amount to increment
-     * @return the new value (-1 if the key doesn't exist)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long incr(String key, int by) throws IOException {
-        return getSingleMemcachedClient().incr(key, by);
-    }
-
-    /**
-     * Decrement the given key by the given value.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the value
-     * @return the new value (-1 if the key doesn't exist)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long decr(String key, long by) throws IOException {
-        return getSingleMemcachedClient().decr(key, by);
-    }
-
-    /**
-     * Decrement the given key by the given value.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the value
-     * @return the new value (-1 if the key doesn't exist)
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long decr(String key, int by) throws IOException {
-        return getSingleMemcachedClient().decr(key, by);
-    }
-
-    /**
-     * Increment the given counter, returning the new value.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the amount to increment
-     * @param def the default value (if the counter does not exist)
-     * @param exp the expiration of this object
-     * @return the new value, or -1 if we were unable to increment or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long incr(String key, long by, long def, int exp) throws IOException {
-        return getSingleMemcachedClient().incr(key, by, def, exp);
-    }
-
-    /**
-     * Increment the given counter, returning the new value.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the amount to increment
-     * @param def the default value (if the counter does not exist)
-     * @param exp the expiration of this object
-     * @return the new value, or -1 if we were unable to increment or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long incr(String key, int by, long def, int exp) throws IOException {
-        return getSingleMemcachedClient().incr(key, by, def, exp);
-    }
-
-    /**
-     * Decrement the given counter, returning the new value.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the amount to decrement
-     * @param def the default value (if the counter does not exist)
-     * @param exp the expiration of this object
-     * @return the new value, or -1 if we were unable to decrement or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long decr(String key, long by, long def, int exp) throws IOException {
-        return getSingleMemcachedClient().decr(key, by, def, exp);
-    }
-
-    /**
-     * Decrement the given counter, returning the new value.
-     * <p/>
-     * Due to the way the memcached server operates on items, incremented and
-     * decremented items will be returned as Strings with any operations that
-     * return a value.
-     *
-     * @param key the key
-     * @param by  the amount to decrement
-     * @param def the default value (if the counter does not exist)
-     * @param exp the expiration of this object
-     * @return the new value, or -1 if we were unable to decrement or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long decr(String key, int by, long def, int exp) throws IOException {
-        return getSingleMemcachedClient().decr(key, by, def, exp);
-    }
-
-    /**
-     * Asychronous increment.
-     *
-     * @param key key to increment
-     * @param by  the amount to increment the value by
-     * @return a future with the incremented value, or -1 if the increment failed.
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Long> asyncIncr(String key, long by) throws IOException {
-        return getSingleMemcachedClient().asyncIncr(key, by);
-    }
-
-    /**
-     * Asychronous increment.
-     *
-     * @param key key to increment
-     * @param by  the amount to increment the value by
-     * @return a future with the incremented value, or -1 if the increment failed.
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Long> asyncIncr(String key, int by) throws IOException {
-        return getSingleMemcachedClient().asyncIncr(key, by);
-    }
-
-    /**
-     * Asynchronous decrement.
-     *
-     * @param key key to increment
-     * @param by  the amount to increment the value by
-     * @return a future with the decremented value, or -1 if the increment failed.
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Long> asyncDecr(String key, long by) throws IOException {
-        return getSingleMemcachedClient().asyncDecr(key, by);
-    }
-
-    /**
-     * Asynchronous decrement.
-     *
-     * @param key key to increment
-     * @param by  the amount to increment the value by
-     * @return a future with the decremented value, or -1 if the increment failed.
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Long> asyncDecr(String key, int by) throws IOException {
-        return getSingleMemcachedClient().asyncDecr(key, by);
-    }
-
-    /**
-     * Increment the given counter, returning the new value.
-     *
-     * @param key the key
-     * @param by  the amount to increment
-     * @param def the default value (if the counter does not exist)
-     * @return the new value, or -1 if we were unable to increment or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long incr(String key, long by, long def) throws IOException {
-        return getSingleMemcachedClient().incr(key, by, def);
-    }
-
-    /**
-     * Increment the given counter, returning the new value.
-     *
-     * @param key the key
-     * @param by  the amount to increment
-     * @param def the default value (if the counter does not exist)
-     * @return the new value, or -1 if we were unable to increment or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long incr(String key, int by, long def) throws IOException {
-        return getSingleMemcachedClient().incr(key, by, def);
-    }
-
-    /**
-     * Decrement the given counter, returning the new value.
-     *
-     * @param key the key
-     * @param by  the amount to decrement
-     * @param def the default value (if the counter does not exist)
-     * @return the new value, or -1 if we were unable to decrement or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long decr(String key, long by, long def) throws IOException {
-        return getSingleMemcachedClient().decr(key, by, def);
-    }
-
-    /**
-     * Decrement the given counter, returning the new value.
-     *
-     * @param key the key
-     * @param by  the amount to decrement
-     * @param def the default value (if the counter does not exist)
-     * @return the new value, or -1 if we were unable to decrement or add
-     * @throws OperationTimeoutException if the global operation timeout is
-     *                                   exceeded
-     * @throws IllegalStateException     in the rare circumstance where queue is too
-     *                                   full to accept any more requests
-     */
-    public static long decr(String key, int by, long def) throws IOException {
-        return getSingleMemcachedClient().decr(key, by, def);
-    }
-
-    /**
-     * Delete the given key from the cache.
-     * <p/>
-     * <p>
-     * The hold argument specifies the amount of time in seconds (or Unix time
-     * until which) the client wishes the server to refuse "add" and "replace"
-     * commands with this key. For this amount of item, the item is put into a
-     * delete queue, which means that it won't possible to retrieve it by the
-     * "get" command, but "add" and "replace" command with this key will also fail
-     * (the "set" command will succeed, however). After the time passes, the item
-     * is finally deleted from server memory.
-     * </p>
-     *
-     * @param key  the key to delete
-     * @param hold how long the key should be unavailable to add commands
-     * @return whether or not the operation was performed
-     * @deprecated Hold values are no longer honored.
-     */
-    @Deprecated
-    public static OperationFuture<Boolean> delete(String key, int hold) throws IOException {
-        return getSingleMemcachedClient().delete(key, hold);
-    }
-
-    /**
-     * Delete the given key from the cache.
-     *
-     * @param key the key to delete
-     * @return whether or not the operation was performed
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> delete(String key) throws IOException {
+    public static boolean delete(final String key) throws TimeoutException,
+            InterruptedException, MemcachedException {
         return getSingleMemcachedClient().delete(key);
     }
 
-    /**
-     * Flush all caches from all servers with a delay of application.
-     *
-     * @param delay the period of time to delay, in seconds
-     * @return whether or not the operation was accepted
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> flush(final int delay) throws IOException {
-        return getSingleMemcachedClient().flush(delay);
+    public static boolean touch(final String key, int exp) throws TimeoutException,
+            InterruptedException, MemcachedException {
+        return getSingleMemcachedClient().touch(key, exp);
     }
 
-    /**
-     * Flush all caches from all servers immediately.
-     *
-     * @return whether or not the operation was performed
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static OperationFuture<Boolean> flush() throws IOException {
-        return getSingleMemcachedClient().flush();
+    public static <T> T getAndTouch(final String key, int newExp)
+            throws TimeoutException, InterruptedException, MemcachedException {
+        return getSingleMemcachedClient().getAndTouch(key, newExp);
     }
 
-    public static Set<String> listSaslMechanisms() throws IOException {
-        return getSingleMemcachedClient().listSaslMechanisms();
-    }
-
-    /**
-     * Shut down immediately.
-     */
-    public static void shutdown() throws IOException {
-        shutdown(-1, TimeUnit.MILLISECONDS);
-    }
-
-    /**
-     * Shut down this client gracefully.
-     *
-     * @param timeout the amount of time time for shutdown
-     * @param unit    the TimeUnit for the timeout
-     * @return result of the shutdown request
-     */
-    public static boolean shutdown(long timeout, TimeUnit unit) throws IOException {
-        MemcachedClient mc = getSingleMemcachedClient();
-        synchronized (mc) {
-            return mc.shutdown(timeout, unit);
-        }
-    }
-
-    /**
-     * Wait for the queues to die down.
-     *
-     * @param timeout the amount of time time for shutdown
-     * @param unit    the TimeUnit for the timeout
-     * @return result of the request for the wait
-     * @throws IllegalStateException in the rare circumstance where queue is too
-     *                               full to accept any more requests
-     */
-    public static boolean waitForQueues(long timeout, TimeUnit unit) throws IOException {
-        return getSingleMemcachedClient().waitForQueues(timeout, unit);
-    }
-
-    /**
-     * Add a connection observer.
-     * <p/>
-     * If connections are already established, your observer will be called with
-     * the address and -1.
-     *
-     * @param obs the ConnectionObserver you wish to add
-     * @return true if the observer was added.
-     */
-    public static boolean addObserver(ConnectionObserver obs) throws IOException {
-        return getSingleMemcachedClient().addObserver(obs);
-    }
-
-    /**
-     * Remove a connection observer.
-     *
-     * @param obs the ConnectionObserver you wish to add
-     * @return true if the observer existed, but no longer does
-     */
-    public static boolean removeObserver(ConnectionObserver obs) throws IOException {
-        return getSingleMemcachedClient().removeObserver(obs);
-    }
-
-    public static void connectionEstablished(SocketAddress sa, int reconnectCount) throws IOException {
-        getSingleMemcachedClient().connectionEstablished(sa, reconnectCount);
-    }
-
-    public static void connectionLost(SocketAddress sa) throws IOException {
-        getSingleMemcachedClient().connectionLost(sa);
-    }
 }

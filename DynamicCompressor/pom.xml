@@ -28,7 +28,7 @@
 
     <groupId>com.log4ic.compressor</groupId>
     <artifactId>dynamic-compressor</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <packaging>jar</packaging>
 
     <name>Dynamic Compressor</name>
@@ -221,9 +221,15 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>spy</groupId>
-            <artifactId>spymemcached</artifactId>
-            <version>2.8.1</version>
+            <groupId>com.googlecode.xmemcached</groupId>
+            <artifactId>xmemcached</artifactId>
+            <version>1.3.5</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-api</artifactId>
+                    <groupId>org.slf4j</groupId>
+                </exclusion>
+            </exclusions>
             <optional>true</optional>
         </dependency>
         <dependency>

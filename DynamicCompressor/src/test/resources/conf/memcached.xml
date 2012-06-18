@@ -21,8 +21,14 @@
   ~ You should have received a copy of the GNU General Public License
   ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
   -->
-<memcached>
-    <logger>com.log4ic.compressor.cache.impl.memcached.logger.Slf4JLogger</logger>
+<memcached
+        connectionPoolSize="10"
+        sessionIdleTimeout="10000"
+        mergeFactor="50"
+        optimizeMergeBuffer="false"
+        enableHeartBeat="true"
+        statisticsServer="true"
+        statisticsInterval="10000">
     <servers>
         <server>
             <host>127.0.0.1</host>
