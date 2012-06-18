@@ -25,7 +25,7 @@
         connectionPoolSize="10"
         sessionIdleTimeout="10000"
         mergeFactor="50"
-        optimizeMergeBuffer="false"
+        optimizeMergeBuffer="true"
         enableHeartBeat="true"
         statisticsServer="true"
         statisticsInterval="10000">
