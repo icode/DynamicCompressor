@@ -192,7 +192,7 @@
         <dependency>
             <groupId>com.google.closure-stylesheets</groupId>
             <artifactId>closure-stylesheets</artifactId>
-            <version>20120303</version>
+            <version>20120618</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
