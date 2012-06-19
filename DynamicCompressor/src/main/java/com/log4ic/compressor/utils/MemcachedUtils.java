@@ -377,4 +377,8 @@ public class MemcachedUtils {
         return getSingleMemcachedClient().getAndTouch(key, newExp);
     }
 
+    public static void shutdown() throws IOException {
+        getSingleMemcachedClient().shutdown();
+    }
+
 }
