@@ -35,7 +35,7 @@
         <TCP_NODELAY type="java.lang.Boolean">true</TCP_NODELAY>
     </socketOption>
     <servers>
-        <server>
+        <server weights="1">
             <master>
                 <host>127.0.0.1</host>
                 <port>11211</port>

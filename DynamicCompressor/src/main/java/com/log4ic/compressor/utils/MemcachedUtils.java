@@ -32,6 +32,7 @@ import net.rubyeye.xmemcached.XMemcachedClientBuilder;
 import net.rubyeye.xmemcached.command.BinaryCommandFactory;
 import net.rubyeye.xmemcached.exception.MemcachedException;
 import net.rubyeye.xmemcached.transcoders.Transcoder;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.dom4j.*;
 import org.dom4j.io.SAXReader;
@@ -45,10 +46,7 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -79,10 +77,10 @@ public class MemcachedUtils {
 
 
     private static class MemcachedConfig {
-        private MemcachedClientBuilder builder;
-        private boolean enableHeartBeat = true;
-        private int mergeFactor = 150;
-        private boolean optimizeMergeBuffer = true;
+        MemcachedClientBuilder builder;
+        boolean enableHeartBeat = true;
+        int mergeFactor = 150;
+        boolean optimizeMergeBuffer = true;
     }
 
     private static InetSocketAddress biludAddr(Node node) {
@@ -95,10 +93,28 @@ public class MemcachedUtils {
         return null;
     }
 
-    private static Map<InetSocketAddress, InetSocketAddress> biludAddrMap(List<Node> nodeList) {
-        Map<InetSocketAddress, InetSocketAddress> map = new LinkedHashMap<InetSocketAddress, InetSocketAddress>();
+    private static class AddressConfig {
+        Map<InetSocketAddress, InetSocketAddress> addressMap;
+        int[] widgets;
+    }
+
+
+    private static AddressConfig biludAddrMapConfig(List<Node> nodeList) {
+        AddressConfig config = new AddressConfig();
+        config.addressMap = new LinkedHashMap<InetSocketAddress, InetSocketAddress>();
+        List<Integer> weightsList = new ArrayList<Integer>();
         for (Node node : nodeList) {
             Node masterNode = node.selectSingleNode("master");
+            Node weightsNode = ((Element) node).attribute("weights");
+            int weights = 1;
+            if (weightsNode != null) {
+                try {
+                    weights = Integer.parseInt(weightsNode.getText());
+                } catch (Exception e) {
+                    //fuck ide
+                }
+            }
+            weightsList.add(weights);
             InetSocketAddress masterAddr;
             if (masterNode != null) {
                 masterAddr = biludAddr(masterNode);
@@ -110,9 +126,10 @@ public class MemcachedUtils {
             if (standbyNode != null) {
                 standbyAddr = biludAddr(standbyNode);
             }
-            map.put(masterAddr, standbyAddr);
+            config.addressMap.put(masterAddr, standbyAddr);
         }
-        return map;
+        config.widgets = ArrayUtils.toPrimitive(weightsList.toArray(new Integer[weightsList.size()]));
+        return config;
     }
 
     @SuppressWarnings("unchecked")
@@ -131,7 +148,9 @@ public class MemcachedUtils {
             logger.debug("读取服务器列表完成，共" + nodeList.size() + "个节点.");
         }
 
-        config.builder = new XMemcachedClientBuilder(biludAddrMap(nodeList));
+        AddressConfig addrConf = biludAddrMapConfig(nodeList);
+
+        config.builder = new XMemcachedClientBuilder(addrConf.addressMap, addrConf.widgets);
 
         Element el = (Element) doc.selectSingleNode("/memcached");
         logger.debug("读取连接池大小设置...");
