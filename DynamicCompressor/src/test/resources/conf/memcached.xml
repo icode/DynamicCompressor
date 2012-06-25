@@ -29,14 +29,21 @@
         enableHeartBeat="true"
         statisticsServer="true"
         statisticsInterval="10000"
-        commandFactory="net.rubyeye.xmemcached.command.BinaryCommandFactory">
+        commandFactory="net.rubyeye.xmemcached.command.BinaryCommandFactory"
+        failureMode="true">
     <socketOption>
         <TCP_NODELAY type="java.lang.Boolean">true</TCP_NODELAY>
     </socketOption>
     <servers>
         <server>
-            <host>127.0.0.1</host>
-            <port>11211</port>
+            <master>
+                <host>127.0.0.1</host>
+                <port>11211</port>
+            </master>
+<!--            <standby>
+                <host>127.0.0.1</host>
+                <port>11211</port>
+            </standby>-->
         </server>
     </servers>
 </memcached>
