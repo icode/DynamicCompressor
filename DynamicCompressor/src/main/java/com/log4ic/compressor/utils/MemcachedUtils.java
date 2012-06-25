@@ -334,17 +334,19 @@ public class MemcachedUtils {
         return client;
     }
 
-
+    @SuppressWarnings("unchecked")
     public static <T> T get(final String key, final long timeout, final Transcoder<T> transcoder) throws MemcachedException, TimeoutException, InterruptedException {
-        return getSingleMemcachedClient().get(key, timeout, transcoder);
+        return (T) getSingleMemcachedClient().get(key, timeout, transcoder);
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> T get(final String key, final Transcoder<T> transcoder) throws MemcachedException, TimeoutException, InterruptedException {
-        return getSingleMemcachedClient().get(key, transcoder);
+        return (T) getSingleMemcachedClient().get(key, transcoder);
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> T get(final String key) throws MemcachedException, TimeoutException, InterruptedException {
-        return getSingleMemcachedClient().get(key);
+        return (T) getSingleMemcachedClient().get(key);
     }
 
     public static <T> Map<String, T> get(final Collection<String> keyCollections)
@@ -372,9 +374,10 @@ public class MemcachedUtils {
         return getSingleMemcachedClient().touch(key, exp);
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> T getAndTouch(final String key, int newExp)
             throws TimeoutException, InterruptedException, MemcachedException {
-        return getSingleMemcachedClient().getAndTouch(key, newExp);
+        return (T) getSingleMemcachedClient().getAndTouch(key, newExp);
     }
 
     public static void shutdown() throws IOException {
