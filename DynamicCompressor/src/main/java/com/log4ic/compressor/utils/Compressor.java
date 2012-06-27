@@ -651,6 +651,14 @@ public class Compressor {
         return type;
     }
 
+    private static String mergeCode(List<SourceCode> codeList) {
+        StringBuilder builder = new StringBuilder();
+        for (SourceCode code : codeList) {
+            builder.append(code.getFileContents());
+        }
+        return builder.toString();
+    }
+
     /**
      * 构建压缩代码及缓存
      *
@@ -701,7 +709,7 @@ public class Compressor {
                 //获取参数的文件并合并
                 List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type, fileDomain);
                 //压缩
-                code = HttpUtils.getBooleanParam(request, "nocompress") ? code : compressCode(codeList, request, type);
+                code = HttpUtils.getBooleanParam(request, "nocompress") ? mergeCode(codeList) : compressCode(codeList, request, type);
                 if (cacheManager != null) {
                     final String finalCode = code;
                     new Thread(new Runnable() {
