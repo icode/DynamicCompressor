@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
  * @author 张立鑫 IntelligentCode
  */
 public interface CacheManager extends Serializable {
+    public void put(String key, final Cache cache);
     public void put(String key, String value, Compressor.FileType fileType);
 
 

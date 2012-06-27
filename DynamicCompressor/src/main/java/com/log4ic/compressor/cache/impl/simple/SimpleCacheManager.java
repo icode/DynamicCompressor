@@ -57,8 +57,8 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
         super(cacheType, cacheCount, autoCleanHitTimes, autoCleanHourAgo, autoCleanInterval, dir);
     }
 
-
-    protected void putCache(String key, Cache cache) {
+    @Override
+    public void put(String key, Cache cache) {
         //如果缓存超过预设最大限度则移除命中率最低的缓存
         if (this.cache.size() >= this.maxCacheCount) {
             this.removeLowCache();
@@ -84,7 +84,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
         } catch (CacheException e) {
             logger.error("建立缓存失败", e);
         }
-        this.putCache(key, cCache);
+        this.put(key, cCache);
     }
 
 
@@ -196,7 +196,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        manager.putCache(key, finalCache);
+                        manager.put(key, finalCache);
                     }
                 }).start();
             }

@@ -171,10 +171,19 @@ public class MemcachedCacheManager extends AbstractCacheManager {
 
     @Override
     public void put(String key, final String value, final Compressor.FileType fileType) {
+        try {
+            put(key, new MemcachedCache(key, value, cacheType, fileType, cacheDir));
+        } catch (CacheException e) {
+            logger.error("put cache exception", e);
+        }
+    }
+
+
+    public void put(String key, final Cache cache) {
         final CacheType cacheType = this.cacheType;
         final String cacheDir = this.cacheDir;
         try {
-            MemcachedUtils.setWithNoReply(key, 0, new MemcachedCache(key, value, cacheType, fileType, cacheDir).toByteArray());
+            MemcachedUtils.setWithNoReply(key, 0, new MemcachedCache(key, cache.getCacheFile(), cacheType, cacheDir).toByteArray());
             //todo key list
         } catch (CacheException e) {
             logger.error("put cache exception", e);
@@ -190,6 +199,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
             }
         }*/
     }
+
 
     @Override
     public void remove(String key) {
@@ -238,7 +248,7 @@ public class MemcachedCacheManager extends AbstractCacheManager {
                 if (cache != null) {
                     logger.debug("从缓存文件建立内容");
                     final MemcachedCacheManager manager = this;
-                    manager.put(key, cache.getContent(), cache.getFileType());
+                    manager.put(key, cache);
                     return cache;
                 }
             }
