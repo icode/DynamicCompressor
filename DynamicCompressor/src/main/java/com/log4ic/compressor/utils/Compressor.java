@@ -818,14 +818,17 @@ public class Compressor {
             //进行构建代码
             if (cacheManager != null) {
                 logger.debug("未找到缓存，进行构建代码");
+            } else {
+                logger.debug("进行构建代码");
             }
             code = buildCode(type, queryString, cacheManager, request, response, fileDomain);
+            logger.debug("代码构建完毕");
         } else {
             logger.debug("找到缓存，返回数据流");
             code = cache.getContent();
         }
 
-        //将内容输出
+        logger.debug("输出内容流...");
         writeOutCode(code, type, response);
     }
 
