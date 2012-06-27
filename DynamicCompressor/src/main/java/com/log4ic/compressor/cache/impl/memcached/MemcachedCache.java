@@ -77,7 +77,7 @@ public class MemcachedCache implements Cache {
 
     public MemcachedCache(String key, CacheFile file, CacheType type, String dir) throws CacheException {
         this(key, type, dir);
-        buildProtobuf(file.readContent(), file.getFileType());
+        buildProtobuf(file.readContent(), file.getFileType(), file.getFile().lastModified());
     }
 
     public MemcachedCache(String key, String dir, CacheType type, byte[] bytes) throws InvalidProtocolBufferException, CacheException {
@@ -96,12 +96,15 @@ public class MemcachedCache implements Cache {
                 this.cacheDir, this.getMemcachedCacheProtobuf().getCreateDate());
     }
 
-
     protected void buildProtobuf(String value, Compressor.FileType type) throws CacheException {
+        buildProtobuf(value, type, System.currentTimeMillis());
+    }
+
+    protected void buildProtobuf(String value, Compressor.FileType type, Long date) throws CacheException {
         MemcachedCacheProtobuf.MemcachedCache.Builder cacheBuilder = MemcachedCacheProtobuf.MemcachedCache.newBuilder();
         cacheBuilder.setCacheFilePath(SimpleCache.findCacheFile(this.key, type, this.cacheDir).getPath());
         cacheBuilder.setContent(value);
-        cacheBuilder.setCreateDate(System.currentTimeMillis());
+        cacheBuilder.setCreateDate(date);
         cacheBuilder.setFileType(MemcachedCacheProtobuf.MemcachedCache.FileType.valueOf(type.name()));
         this.memcachedCache = cacheBuilder.build();
     }
