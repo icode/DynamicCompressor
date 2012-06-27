@@ -816,7 +816,9 @@ public class Compressor {
         //这里是为了减少同步带来的性能消耗，将线程同步全部放在耗时操作内，在此块进行线程同步过滤
         if (cache == null || cache.isExpired()) {
             //进行构建代码
-            logger.debug("未找到缓存，进行构建代码");
+            if (cacheManager != null) {
+                logger.debug("未找到缓存，进行构建代码");
+            }
             code = buildCode(type, queryString, cacheManager, request, response, fileDomain);
         } else {
             logger.debug("找到缓存，返回数据流");
