@@ -323,7 +323,7 @@ public class Compressor {
                                 if (imgUrlFragment.equals("..")) {//上级目录
                                     int index = cssUrl.lastIndexOf("/");
                                     if (index > 0) {
-                                        cssUrl = cssUrl.substring(0, index);
+                                        cssUrl = cssUrl.substring(0, index + 1);
                                     } else {
                                         cssUrl = "/";
                                     }
