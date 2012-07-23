@@ -24,7 +24,7 @@
 
 package com.log4ic.compressor.utils;
 
-import com.google.common.collect.Sets;
+import com.google.common.collect.Lists;
 import com.google.common.css.JobDescription;
 import com.google.common.css.JobDescriptionBuilder;
 import com.google.common.css.SourceCode;
@@ -62,7 +62,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -605,7 +604,7 @@ public class Compressor {
 
         String[] params = queryString.split("&");
 
-        Set<String> noRepeatParams = Sets.newHashSet();
+        List<String> noRepeatParams = Lists.newArrayList();
         //去掉重复参数
         for (String param : params) {
             String[] p = param.split("=");
@@ -613,7 +612,9 @@ public class Compressor {
                 if (StringUtils.isNotBlank(root)) {
                     p[0] = root + (root.endsWith("/") || p[0].startsWith("/") ? "" : "/") + p[0];
                 }
-                noRepeatParams.add(p[0]);
+                if (!noRepeatParams.contains(p[0])) {
+                    noRepeatParams.add(p[0]);
+                }
             }
         }
 
