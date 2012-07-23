@@ -24,6 +24,7 @@
 
 package com.log4ic.compressor.utils;
 
+import com.google.common.collect.Sets;
 import com.google.common.css.JobDescription;
 import com.google.common.css.JobDescriptionBuilder;
 import com.google.common.css.SourceCode;
@@ -61,6 +62,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -451,8 +453,10 @@ public class Compressor {
                 } catch (IOException e) {
                     throw new CompressionException(e);
                 }
-                SourceCode sourceCode = new SourceCode(url.substring(url.lastIndexOf("/") + 1), code.toString());
-                codeList.add(sourceCode);
+                if (code.length() > 0) {
+                    SourceCode sourceCode = new SourceCode(url.substring(url.lastIndexOf("/") + 1), code.toString());
+                    codeList.add(sourceCode);
+                }
             }
         }
 
@@ -590,13 +594,26 @@ public class Compressor {
             throw new CompressionException(e);
         }
 
-        String[] params = queryString.replace("=", "").split("&");
+        String root = null;
+        int rootIndex = queryString.indexOf("root=");
+        if (rootIndex > -1) {
+            root = queryString.substring(rootIndex + 5);
+            int rootEnd = root.indexOf("&");
+            root = root.substring(0, rootEnd);
+            queryString = queryString.substring(0, rootIndex) + queryString.substring(rootEnd + 1);
+        }
 
-        FastList<String> noRepeatParams = new FastList<String>();
+        String[] params = queryString.split("&");
+
+        Set<String> noRepeatParams = Sets.newHashSet();
         //去掉重复参数
         for (String param : params) {
-            if (noRepeatParams.indexOf(param) == -1) {
-                noRepeatParams.add(param);
+            String[] p = param.split("=");
+            if (StringUtils.isNotBlank(p[0])) {
+                if (StringUtils.isNotBlank(root)) {
+                    p[0] = root + (root.endsWith("/") || p[0].startsWith("/") ? "" : "/") + p[0];
+                }
+                noRepeatParams.add(p[0]);
             }
         }
 
