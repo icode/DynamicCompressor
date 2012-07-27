@@ -218,6 +218,9 @@ public class Compressor {
     public static String compressCSS(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
         JobDescriptionBuilder builder = new JobDescriptionBuilder();
         builder.setAllowWebkitKeyframes(true);
+        builder.setAllowKeyframes(true);
+        builder.setAllowUnrecognizedFunctions(true);
+        builder.setAllowUnrecognizedProperties(true);
         builder.setProcessDependencies(true);
         builder.setSimplifyCss(true);
         builder.setEliminateDeadStyles(true);

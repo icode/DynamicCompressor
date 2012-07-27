@@ -28,7 +28,7 @@
 
     <groupId>com.log4ic.compressor</groupId>
     <artifactId>dynamic-compressor</artifactId>
-    <version>1.0.5c</version>
+    <version>1.0.5d</version>
     <packaging>jar</packaging>
 
     <name>Dynamic Compressor</name>
