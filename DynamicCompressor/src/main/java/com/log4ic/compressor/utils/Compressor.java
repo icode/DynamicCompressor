@@ -300,7 +300,7 @@ public class Compressor {
             case GSS:
             case CSS:
                 logger.debug("修正文件内的URL相对指向...");
-                Pattern pattern = Pattern.compile("url\\(([^)]+)\\)", Pattern.CASE_INSENSITIVE);
+                Pattern pattern = Pattern.compile("url\\(\\s*(?!['\"]?(?:data:|about:|#))([^)]+)\\)", Pattern.CASE_INSENSITIVE);
                 Matcher matcher = pattern.matcher(code);
 
                 String[] codeFragments = pattern.split(code);
