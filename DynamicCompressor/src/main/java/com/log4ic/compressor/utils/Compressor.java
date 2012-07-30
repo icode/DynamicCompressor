@@ -456,7 +456,7 @@ public class Compressor {
                     throw new CompressionException(e);
                 }
                 if (code.length() > 0) {
-                    SourceCode sourceCode = new SourceCode(url.substring(url.lastIndexOf("/") + 1), code.toString());
+                    SourceCode sourceCode = new SourceCode(url, code.toString());
                     codeList.add(sourceCode);
                 }
             }
