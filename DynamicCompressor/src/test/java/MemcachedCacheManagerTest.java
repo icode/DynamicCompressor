@@ -40,7 +40,7 @@ public class MemcachedCacheManagerTest {
         cacheManager = new MemcachedCacheManager(CacheType.MEMORY, 10, this.getClass().getResource("/").getPath());
     }
 
-    @Test
+   // @Test
     public void addCache() throws CacheException {
         cacheManager.put("11", "1230..00..0000..", Compressor.FileType.JS);
         cacheManager.put("22&33&44", "1231..00..0000..", Compressor.FileType.GSS);
@@ -48,7 +48,7 @@ public class MemcachedCacheManagerTest {
         cacheManager.put("/abc/d&&44&&/123/456", "1233000.000...000..0", Compressor.FileType.CSS);
     }
 
-    @Test
+    //@Test
     public void getCache() throws CacheException {
         printCache(cacheManager.get("11"));
         printCache(cacheManager.get("22&33&44"));
@@ -57,13 +57,13 @@ public class MemcachedCacheManagerTest {
         printCache(cacheManager.get("..."));
     }
 
-    @Test
+   // @Test
     public void markExpiredCacheTest() throws CacheException {
 //        cacheManager.markExpiredCache(".*22.*");
 //        cacheManager.markExpiredCache(".*\\/abc\\/d.*");
     }
 
-    @Test
+    //@Test
     public void getKeyListSize() {
 //        System.out.println("CacheSize:" + cacheManager.getCacheSize());
     }
