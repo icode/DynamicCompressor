@@ -47,10 +47,7 @@ import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
 import javolution.util.FastList;
 import javolution.util.FastMap;
 import org.apache.commons.lang3.StringUtils;
-import org.mozilla.javascript.Context;
-import org.mozilla.javascript.ContextAction;
-import org.mozilla.javascript.ContextFactory;
-import org.mozilla.javascript.Function;
+import org.mozilla.javascript.*;
 import org.mozilla.javascript.tools.shell.Global;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,22 +84,26 @@ public class Compressor {
 
     static {
         try {
-            lessRhinoContext = FileUtils.InputStream2String(FileUtils.getResourceAsStream("/externs/less-rhino.js"), "UTF8");
+            lessRhinoContext = FileUtils.InputStream2String(FileUtils.getResourceAsStream("/externs/less.js"), "UTF8");
         } catch (Exception e) {
             logger.error("", e);
         }
         global.init(jsContextFactory);
+        global.defineProperty("window", global, ScriptableObject.PERMANENT);
+
         jsContextFactory.call(new ContextAction() {
             @Override
             public Object run(Context cx) {
                 cx.evaluateString(global,
                         lessRhinoContext +
-                        " var parser = less.Parser(),parseLess = function(less){var res;parser.parse(less, function(e, root) {if(e){throw e.message+', column'+e.column;}else{res=root.toCSS()}});return res;};",
-                        "less-rhino.js", 0, null);
+                                " var parser = less.Parser(),parseLess = function(less){var res;parser.parse(less, function(e, root) {if(e){throw e.message+', column'+e.column;}else{res=root.toCSS()}});return res;};",
+                        "less.js", 0, null);
                 return null;
             }
         });
     }
+
+    private static final Function parseFn = (Function) global.get("parseLess", global);
 
     private static final Map<String, byte[]> progressCacheLock = new FastMap<String, byte[]>();
 
@@ -140,9 +141,15 @@ public class Compressor {
      */
     public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
         final List<SourceCode> resultCodeList = new FastList<SourceCode>();
+        StringBuilder conditionsBuilder = new StringBuilder();
+        for (String con : conditions) {
+            conditionsBuilder.append("@").append(con).append(":true;");
+        }
         for (final SourceCode sourceCode : codeList) {
-            final Object[] functionArgs = new Object[]{sourceCode.getFileContents()};
-            final Function parseFn = (Function) global.get("parseLess", global);
+            if (!sourceCode.getFileName().endsWith(".less") && !sourceCode.getFileName().endsWith(".mcss")) {
+                continue;
+            }
+            final Object[] functionArgs = new Object[]{conditionsBuilder.toString() + sourceCode.getFileContents()};
             jsContextFactory.call(new ContextAction() {
                 @Override
                 public Object run(Context cx) {
@@ -468,7 +475,7 @@ public class Compressor {
         MCSS {
             public boolean contains(String type) {
                 return MCSS.name().equals(type.toUpperCase()) ||
-                        GSS.name().equals(type.toUpperCase())||
+                        GSS.name().equals(type.toUpperCase()) ||
                         LESS.name().equals(type.toUpperCase());
             }
         };

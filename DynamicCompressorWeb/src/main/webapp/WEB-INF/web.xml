@@ -77,7 +77,7 @@
         <init-param>
             <description>缓存类型,file,memory,none为不缓存</description>
             <param-name>cacheType</param-name>
-            <param-value>memory</param-value>
+            <param-value>none</param-value>
         </init-param>
         <init-param>
             <description>缓存器的实现,默认为SimpleCacheManager</description>
