@@ -31,7 +31,6 @@ import com.google.common.css.SourceCode;
 import com.google.common.css.compiler.ast.CssTree;
 import com.google.common.css.compiler.ast.GssParser;
 import com.google.common.css.compiler.ast.GssParserException;
-import com.google.common.css.compiler.gssfunctions.DefaultGssFunctionMapProvider;
 import com.google.common.css.compiler.passes.CompactPrinter;
 import com.google.common.css.compiler.passes.PassRunner;
 import com.google.common.css.compiler.passes.PrettyPrinter;
@@ -44,7 +43,6 @@ import com.log4ic.compressor.exception.QueryStringEmptyException;
 import com.log4ic.compressor.exception.UnsupportedFileTypeException;
 import com.log4ic.compressor.servlet.http.ContentResponseWrapper;
 import com.log4ic.compressor.servlet.http.stream.ContentResponseStream;
-import com.log4ic.compressor.utils.gss.GssFunctionMapProvider;
 import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
 import javolution.util.FastList;
 import javolution.util.FastMap;
@@ -99,7 +97,7 @@ public class Compressor {
             public Object run(Context cx) {
                 cx.evaluateString(global,
                         lessRhinoContext +
-                        " var parser = less.Parser(),parseLess = function(less){var res;parser.parse(less, function(e, root) {if(e){throw e;}else{res=root.toCSS()}});return res;};",
+                        " var parser = less.Parser(),parseLess = function(less){var res;parser.parse(less, function(e, root) {if(e){throw e.message+', column'+e.column;}else{res=root.toCSS()}});return res;};",
                         "less-rhino.js", 0, null);
                 return null;
             }
@@ -257,7 +255,7 @@ public class Compressor {
         FileUtils.writeFile(code, file.getPath());
     }
 
-    private static final DefaultGssFunctionMapProvider gssFunctionMapProvider = new GssFunctionMapProvider();
+    //private static final DefaultGssFunctionMapProvider gssFunctionMapProvider = new GssFunctionMapProvider();
 
 
     /**
@@ -284,7 +282,7 @@ public class Compressor {
 
         builder.setOutputFormat(format);
         //设置内置方法
-        builder.setGssFunctionMapProvider(gssFunctionMapProvider);
+        //builder.setGssFunctionMapProvider(gssFunctionMapProvider);
         //设置浏览器断言
         if (conditions != null && conditions.size() > 0) {
             for (String con : conditions) {
@@ -357,6 +355,7 @@ public class Compressor {
             case GSS:
             case CSS:
             case LESS:
+            case MCSS:
                 logger.debug("修正文件内的URL相对指向...");
                 Pattern pattern = Pattern.compile("url\\(\\s*(?!['\"]?(?:data:|about:|#))([^)]+)\\)", Pattern.CASE_INSENSITIVE);
                 Matcher matcher = pattern.matcher(code);
@@ -463,6 +462,13 @@ public class Compressor {
         LESS {
             public boolean contains(String type) {
                 return CSS.name().equals(type.toUpperCase()) ||
+                        LESS.name().equals(type.toUpperCase());
+            }
+        },
+        MCSS {
+            public boolean contains(String type) {
+                return MCSS.name().equals(type.toUpperCase()) ||
+                        GSS.name().equals(type.toUpperCase())||
                         LESS.name().equals(type.toUpperCase());
             }
         };
@@ -575,12 +581,17 @@ public class Compressor {
                     }
                     code = Compressor.compressJS(sourceFiles, level, isDebug);
                     break;
-                case GSS:
                 case CSS:
+                    code = Compressor.compressCSS(fileSourceList, getGssFormat(isDebug, request), Lists.<String>newArrayList());
+                    break;
+                case GSS:
                     //压缩代码并设置浏览器断言
                     code = Compressor.compressCSS(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
                     break;
                 case LESS:
+                    code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), Lists.<String>newArrayList());
+                    break;
+                case MCSS:
                     //压缩代码并设置浏览器断言
                     code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
                     break;
@@ -707,6 +718,7 @@ public class Compressor {
                 case CSS:
                 case GSS:
                 case LESS:
+                case MCSS:
                     response.setContentType("text/css");
                     break;
                 default:
@@ -861,7 +873,7 @@ public class Compressor {
 
         FileType type = getFileType(request);
 
-        if (type == FileType.GSS || type == FileType.LESS) {
+        if (type == FileType.GSS || type == FileType.MCSS) {
             List<BrowserInfo> browserInfoList = HttpUtils.getRequestBrowserInfo(request);
             List<String> platformList = HttpUtils.getRequestPlatform(request);
             if (browserInfoList.size() > 0) {
