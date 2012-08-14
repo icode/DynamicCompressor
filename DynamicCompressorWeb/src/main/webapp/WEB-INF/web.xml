@@ -121,5 +121,6 @@
         <url-pattern>/compress.gss</url-pattern>
         <url-pattern>/compress.css</url-pattern>
         <url-pattern>/compress.js</url-pattern>
+        <url-pattern>/compress.less</url-pattern>
     </servlet-mapping>
 </web-app>

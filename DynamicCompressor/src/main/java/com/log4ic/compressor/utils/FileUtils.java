@@ -39,9 +39,11 @@ import java.nio.charset.CharsetDecoder;
 public class FileUtils {
     private FileUtils() {
     }
+
     public static InputStream getResourceAsStream(String source) {
         return FileUtils.class.getResourceAsStream(source);
     }
+
     /**
      * 将数据写入文件
      *
@@ -127,18 +129,27 @@ public class FileUtils {
      * @param file
      * @return
      */
-    public static String readFile(File file) {
+    public static String readFile(File file) throws IOException {
         if (!file.exists() || file.isDirectory() || !file.canRead()) {
             return null;
         }
-        FileInputStream fileInputStream = null;
+        FileInputStream fileInputStream = new FileInputStream(file);
+        return readFile(fileInputStream);
+    }
+
+    /**
+     * 读取文件
+     *
+     * @param fileInputStream
+     * @return
+     */
+    public static String readFile(FileInputStream fileInputStream) throws IOException {
         ByteBuffer buffer = ByteBuffer.allocate(1024);
         StringBuffer contentBuffer = new StringBuffer();
         Charset charset = null;
         CharsetDecoder decoder = null;
         CharBuffer charBuffer = null;
         try {
-            fileInputStream = new FileInputStream(file);
             FileChannel channel = fileInputStream.getChannel();
             while (true) {
                 buffer.clear();
@@ -152,10 +163,6 @@ public class FileUtils {
                 charBuffer = decoder.decode(buffer);
                 contentBuffer.append(charBuffer.toString());
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
         } finally {
             if (fileInputStream != null) {
                 try {
@@ -168,6 +175,24 @@ public class FileUtils {
         return contentBuffer.toString();
     }
 
+    /**
+     * 将InputStream转换成某种字符编码的String
+     *
+     * @param in
+     * @param encoding
+     * @return
+     * @throws Exception
+     */
+    public static String InputStream2String(InputStream in, String encoding) throws Exception {
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
+        byte[] data = new byte[1024];
+        int count = -1;
+        while ((count = in.read(data, 0, 1024)) != -1)
+            outStream.write(data, 0, count);
+
+        data = null;
+        return new String(outStream.toByteArray(), encoding);
+    }
 
     public static String appendSeparator(String path) {
         return path + (path.endsWith(File.separator) ? "" : File.separator);

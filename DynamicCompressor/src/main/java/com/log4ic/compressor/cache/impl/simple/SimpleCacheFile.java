@@ -29,6 +29,7 @@ import com.log4ic.compressor.utils.Compressor;
 import com.log4ic.compressor.utils.FileUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 
 /**
@@ -67,7 +68,11 @@ public class SimpleCacheFile implements CacheFile, Serializable {
 
     public String readContent() {
         if (this.cacheFile != null && this.cacheFile.exists()) {
-            return FileUtils.readFile(this.cacheFile);
+            try {
+                return FileUtils.readFile(this.cacheFile);
+            } catch (IOException e) {
+                return null;
+            }
         }
         return null;
     }

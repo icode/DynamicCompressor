@@ -49,6 +49,11 @@ import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
 import javolution.util.FastList;
 import javolution.util.FastMap;
 import org.apache.commons.lang3.StringUtils;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.ContextAction;
+import org.mozilla.javascript.ContextFactory;
+import org.mozilla.javascript.Function;
+import org.mozilla.javascript.tools.shell.Global;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +82,30 @@ public class Compressor {
 
     private static final Logger logger = LoggerFactory.getLogger(Compressor.class);
 
+    private static Global global = new Global();
+    private static final ContextFactory jsContextFactory = new ContextFactory();
+
+    private static String lessRhinoContext = null;
+
+    static {
+        try {
+            lessRhinoContext = FileUtils.InputStream2String(FileUtils.getResourceAsStream("/externs/less-rhino.js"), "UTF8");
+        } catch (Exception e) {
+            logger.error("", e);
+        }
+        global.init(jsContextFactory);
+        jsContextFactory.call(new ContextAction() {
+            @Override
+            public Object run(Context cx) {
+                cx.evaluateString(global,
+                        lessRhinoContext +
+                        " var parser = less.Parser(),parseLess = function(less){var res;parser.parse(less, function(e, root) {if(e){throw e;}else{res=root.toCSS()}});return res;};",
+                        "less-rhino.js", 0, null);
+                return null;
+            }
+        });
+    }
+
     private static final Map<String, byte[]> progressCacheLock = new FastMap<String, byte[]>();
 
     /**
@@ -101,6 +130,31 @@ public class Compressor {
      */
     public static String compressJS(JSSourceFile[] jsFiles, CompilerOptions options, String jsOutputFile) {
         return compressJS(new JSSourceFile[]{JSSourceFile.fromCode("lib.js", "")}, jsFiles, options, jsOutputFile);
+    }
+
+
+    /**
+     * 编译LESS
+     *
+     * @param codeList
+     * @param conditions
+     * @return
+     */
+    public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
+        final List<SourceCode> resultCodeList = new FastList<SourceCode>();
+        for (final SourceCode sourceCode : codeList) {
+            final Object[] functionArgs = new Object[]{sourceCode.getFileContents()};
+            final Function parseFn = (Function) global.get("parseLess", global);
+            jsContextFactory.call(new ContextAction() {
+                @Override
+                public Object run(Context cx) {
+                    Object result = parseFn.call(cx, global, global, functionArgs);
+                    resultCodeList.add(new SourceCode(sourceCode.getFileName(), Context.toString(result)));
+                    return null;
+                }
+            });
+        }
+        return compressCSS(resultCodeList, format, conditions);
     }
 
     /**
@@ -302,6 +356,7 @@ public class Compressor {
         switch (type) {
             case GSS:
             case CSS:
+            case LESS:
                 logger.debug("修正文件内的URL相对指向...");
                 Pattern pattern = Pattern.compile("url\\(\\s*(?!['\"]?(?:data:|about:|#))([^)]+)\\)", Pattern.CASE_INSENSITIVE);
                 Matcher matcher = pattern.matcher(code);
@@ -376,9 +431,8 @@ public class Compressor {
                 }
                 logger.debug("修正文件内的URL相对指向完毕...");
                 break;
-            case JS:
+            default:
                 codeBuffer.append(code);
-                break;
         }
         return codeBuffer.toString();
     }
@@ -404,6 +458,12 @@ public class Compressor {
             public boolean contains(String type) {
                 return GSS.name().equals(type.toUpperCase()) ||
                         CSS.name().equals(type.toUpperCase());
+            }
+        },
+        LESS {
+            public boolean contains(String type) {
+                return CSS.name().equals(type.toUpperCase()) ||
+                        LESS.name().equals(type.toUpperCase());
             }
         };
 
@@ -492,7 +552,6 @@ public class Compressor {
         if (fileSourceList.size() > 0) {
             switch (type) {
                 case JS:
-
                     CompilationLevel level = CompilationLevel.SIMPLE_OPTIMIZATIONS;
                     String levelParam = request.getParameter("level");
                     if (StringUtils.isNotBlank(levelParam)) {
@@ -518,19 +577,26 @@ public class Compressor {
                     break;
                 case GSS:
                 case CSS:
-                    JobDescription.OutputFormat format = JobDescription.OutputFormat.COMPRESSED;
-                    if (isDebug) {
-                        format = JobDescription.OutputFormat.DEBUG;
-                    } else if (HttpUtils.getBooleanParam(request, "pretty")) {
-                        format = JobDescription.OutputFormat.PRETTY_PRINTED;
-                    }
-
                     //压缩代码并设置浏览器断言
-                    code = Compressor.compressCSS(fileSourceList, format, buildTrueConditions(request));
+                    code = Compressor.compressCSS(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
+                    break;
+                case LESS:
+                    //压缩代码并设置浏览器断言
+                    code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
                     break;
             }
         }
         return code;
+    }
+
+    private static JobDescription.OutputFormat getGssFormat(boolean isDebug, HttpServletRequest request) {
+        JobDescription.OutputFormat format = JobDescription.OutputFormat.COMPRESSED;
+        if (isDebug) {
+            format = JobDescription.OutputFormat.DEBUG;
+        } else if (HttpUtils.getBooleanParam(request, "pretty")) {
+            format = JobDescription.OutputFormat.PRETTY_PRINTED;
+        }
+        return format;
     }
 
     private static List<String> buildTrueConditions(HttpServletRequest request) {
@@ -640,6 +706,7 @@ public class Compressor {
                     break;
                 case CSS:
                 case GSS:
+                case LESS:
                     response.setContentType("text/css");
                     break;
                 default:
@@ -794,7 +861,7 @@ public class Compressor {
 
         FileType type = getFileType(request);
 
-        if (type == FileType.GSS) {
+        if (type == FileType.GSS || type == FileType.LESS) {
             List<BrowserInfo> browserInfoList = HttpUtils.getRequestBrowserInfo(request);
             List<String> platformList = HttpUtils.getRequestPlatform(request);
             if (browserInfoList.size() > 0) {

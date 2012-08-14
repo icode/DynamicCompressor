@@ -60,11 +60,13 @@ public final class MemcachedCacheProtobuf {
       JS(0, 0),
       CSS(1, 1),
       GSS(2, 2),
+      LESS(3, 3),
       ;
       
       public static final int JS_VALUE = 0;
       public static final int CSS_VALUE = 1;
       public static final int GSS_VALUE = 2;
+      public static final int LESS_VALUE = 3;
       
       
       public final int getNumber() { return value; }
@@ -74,6 +76,7 @@ public final class MemcachedCacheProtobuf {
           case 0: return JS;
           case 1: return CSS;
           case 2: return GSS;
+          case 3: return LESS;
           default: return null;
         }
       }
@@ -104,7 +107,7 @@ public final class MemcachedCacheProtobuf {
       }
       
       private static final FileType[] VALUES = {
-        JS, CSS, GSS, 
+        JS, CSS, GSS, LESS, 
       };
       
       public static FileType valueOf(
@@ -718,13 +721,13 @@ public final class MemcachedCacheProtobuf {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\024MemcachedCache.proto\"\236\001\n\016MemcachedCach" +
+      "\n\024MemcachedCache.proto\"\250\001\n\016MemcachedCach" +
       "e\022\017\n\007content\030\001 \002(\t\022\025\n\rcacheFilePath\030\002 \002(" +
       "\t\022*\n\010fileType\030\003 \002(\0162\030.MemcachedCache.Fil" +
-      "eType\022\022\n\ncreateDate\030\004 \002(\003\"$\n\010FileType\022\006\n" +
-      "\002JS\020\000\022\007\n\003CSS\020\001\022\007\n\003GSS\020\002BM\n3com.log4ic.co" +
-      "mpressor.cache.impl.memcached.protobufB\026" +
-      "MemcachedCacheProtobuf"
+      "eType\022\022\n\ncreateDate\030\004 \002(\003\".\n\010FileType\022\006\n" +
+      "\002JS\020\000\022\007\n\003CSS\020\001\022\007\n\003GSS\020\002\022\010\n\004LESS\020\003BM\n3com" +
+      ".log4ic.compressor.cache.impl.memcached." +
+      "protobufB\026MemcachedCacheProtobuf"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
