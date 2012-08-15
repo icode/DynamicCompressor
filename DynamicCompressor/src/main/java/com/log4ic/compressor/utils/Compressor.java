@@ -133,13 +133,25 @@ public class Compressor {
 
 
     /**
-     * 编译LESS
+     * 压缩LESS
      *
      * @param codeList
      * @param conditions
      * @return
      */
     public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
+        return compressCSS(parseLess(codeList, conditions), format, conditions);
+    }
+
+    /**
+     * 解释less
+     *
+     * @param codeList
+     * @param conditions
+     * @return
+     * @throws GssParserException
+     */
+    public static List<SourceCode> parseLess(List<SourceCode> codeList, List<String> conditions) {
         final List<SourceCode> resultCodeList = new FastList<SourceCode>();
         StringBuilder conditionsBuilder = new StringBuilder();
         for (String con : conditions) {
@@ -160,8 +172,9 @@ public class Compressor {
                 }
             });
         }
-        return compressCSS(resultCodeList, format, conditions);
+        return resultCodeList;
     }
+
 
     /**
      * 压缩JS
@@ -755,8 +768,9 @@ public class Compressor {
         return type;
     }
 
-    private static String mergeCode(List<SourceCode> codeList) {
+    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request) {
         StringBuilder builder = new StringBuilder();
+        codeList = parseLess(codeList, buildTrueConditions(request));
         for (SourceCode code : codeList) {
             builder.append(code.getFileContents());
         }
@@ -813,7 +827,7 @@ public class Compressor {
                 //获取参数的文件并合并
                 List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type, fileDomain);
                 //压缩
-                code = HttpUtils.getBooleanParam(request, "nocompress") ? mergeCode(codeList) : compressCode(codeList, request, type);
+                code = HttpUtils.getBooleanParam(request, "nocompress") ? mergeCode(codeList, request) : compressCode(codeList, request, type);
                 if (cacheManager != null) {
                     final String finalCode = code;
                     new Thread(new Runnable() {
