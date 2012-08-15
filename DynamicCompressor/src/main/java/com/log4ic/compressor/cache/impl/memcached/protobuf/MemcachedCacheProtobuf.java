@@ -61,14 +61,14 @@ public final class MemcachedCacheProtobuf {
       CSS(1, 1),
       GSS(2, 2),
       LESS(3, 3),
-      MCSS(4, 4),
+      MSS(4, 4),
       ;
       
       public static final int JS_VALUE = 0;
       public static final int CSS_VALUE = 1;
       public static final int GSS_VALUE = 2;
       public static final int LESS_VALUE = 3;
-      public static final int MCSS_VALUE = 4;
+      public static final int MSS_VALUE = 4;
       
       
       public final int getNumber() { return value; }
@@ -79,7 +79,7 @@ public final class MemcachedCacheProtobuf {
           case 1: return CSS;
           case 2: return GSS;
           case 3: return LESS;
-          case 4: return MCSS;
+          case 4: return MSS;
           default: return null;
         }
       }
@@ -110,7 +110,7 @@ public final class MemcachedCacheProtobuf {
       }
       
       private static final FileType[] VALUES = {
-        JS, CSS, GSS, LESS, MCSS, 
+        JS, CSS, GSS, LESS, MSS, 
       };
       
       public static FileType valueOf(
@@ -724,14 +724,14 @@ public final class MemcachedCacheProtobuf {
       descriptor;
   static {
     java.lang.String[] descriptorData = {
-      "\n\024MemcachedCache.proto\"\262\001\n\016MemcachedCach" +
+      "\n\024MemcachedCache.proto\"\261\001\n\016MemcachedCach" +
       "e\022\017\n\007content\030\001 \002(\t\022\025\n\rcacheFilePath\030\002 \002(" +
       "\t\022*\n\010fileType\030\003 \002(\0162\030.MemcachedCache.Fil" +
-      "eType\022\022\n\ncreateDate\030\004 \002(\003\"8\n\010FileType\022\006\n" +
-      "\002JS\020\000\022\007\n\003CSS\020\001\022\007\n\003GSS\020\002\022\010\n\004LESS\020\003\022\010\n\004MCS" +
-      "S\020\004BM\n3com.log4ic.compressor.cache.impl." +
-      "memcached.protobufB\026MemcachedCacheProtob" +
-      "uf"
+      "eType\022\022\n\ncreateDate\030\004 \002(\003\"7\n\010FileType\022\006\n" +
+      "\002JS\020\000\022\007\n\003CSS\020\001\022\007\n\003GSS\020\002\022\010\n\004LESS\020\003\022\007\n\003MSS" +
+      "\020\004BM\n3com.log4ic.compressor.cache.impl.m" +
+      "emcached.protobufB\026MemcachedCacheProtobu" +
+      "f"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {

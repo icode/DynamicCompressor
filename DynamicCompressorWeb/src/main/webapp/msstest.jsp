@@ -25,13 +25,13 @@
 
 <html>
 <head>
-    <title>MCSS测试</title>
+    <title>MSS测试</title>
 </head>
 <body>
-<jsp:include page="/compress.mcss" flush="true">
+<jsp:include page="/compress.mss" flush="true">
     <jsp:param name="/style/style1.css" value=""/>
     <jsp:param name="/style/test.less" value=""/>
-    <jsp:param name="/style/style.gss" value="33"/>
+    <jsp:param name="/style/style.gss" value=""/>
 </jsp:include>
 </body>
 </html>

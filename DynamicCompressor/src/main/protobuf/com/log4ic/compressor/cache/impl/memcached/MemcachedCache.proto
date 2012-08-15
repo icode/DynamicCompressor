@@ -37,7 +37,7 @@ message MemcachedCache {
         CSS = 1;
         GSS = 2;
         LESS = 3;
-        MCSS = 4;
+        MSS = 4;
     }
     required FileType fileType = 3;
     required int64 createDate = 4;

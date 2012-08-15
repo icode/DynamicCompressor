@@ -146,7 +146,8 @@ public class Compressor {
             conditionsBuilder.append("@").append(con).append(":true;");
         }
         for (final SourceCode sourceCode : codeList) {
-            if (!sourceCode.getFileName().endsWith(".less") && !sourceCode.getFileName().endsWith(".mcss")) {
+            if (!sourceCode.getFileName().endsWith(".less") && !sourceCode.getFileName().endsWith(".mss")) {
+                resultCodeList.add(new SourceCode(sourceCode.getFileName(), sourceCode.getFileContents()));
                 continue;
             }
             final Object[] functionArgs = new Object[]{conditionsBuilder.toString() + sourceCode.getFileContents()};
@@ -362,7 +363,7 @@ public class Compressor {
             case GSS:
             case CSS:
             case LESS:
-            case MCSS:
+            case MSS:
                 logger.debug("修正文件内的URL相对指向...");
                 Pattern pattern = Pattern.compile("url\\(\\s*(?!['\"]?(?:data:|about:|#))([^)]+)\\)", Pattern.CASE_INSENSITIVE);
                 Matcher matcher = pattern.matcher(code);
@@ -472,9 +473,9 @@ public class Compressor {
                         LESS.name().equals(type.toUpperCase());
             }
         },
-        MCSS {
+        MSS {
             public boolean contains(String type) {
-                return MCSS.name().equals(type.toUpperCase()) ||
+                return MSS.name().equals(type.toUpperCase()) ||
                         GSS.name().equals(type.toUpperCase()) ||
                         LESS.name().equals(type.toUpperCase());
             }
@@ -598,7 +599,7 @@ public class Compressor {
                 case LESS:
                     code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), Lists.<String>newArrayList());
                     break;
-                case MCSS:
+                case MSS:
                     //压缩代码并设置浏览器断言
                     code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
                     break;
@@ -725,7 +726,7 @@ public class Compressor {
                 case CSS:
                 case GSS:
                 case LESS:
-                case MCSS:
+                case MSS:
                     response.setContentType("text/css");
                     break;
                 default:
@@ -880,7 +881,7 @@ public class Compressor {
 
         FileType type = getFileType(request);
 
-        if (type == FileType.GSS || type == FileType.MCSS) {
+        if (type == FileType.GSS || type == FileType.MSS) {
             List<BrowserInfo> browserInfoList = HttpUtils.getRequestBrowserInfo(request);
             List<String> platformList = HttpUtils.getRequestPlatform(request);
             if (browserInfoList.size() > 0) {

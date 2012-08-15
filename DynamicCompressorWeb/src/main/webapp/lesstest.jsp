@@ -31,7 +31,6 @@
 <jsp:include page="/compress.less" flush="true">
     <jsp:param name="/style/style1.css" value=""/>
     <jsp:param name="/style/test.less" value=""/>
-    <jsp:param name="1w32wwvssssersswwsssswiwon11" value="33"/>
 </jsp:include>
 </body>
 </html>
