@@ -477,7 +477,8 @@ public class Compressor {
             public boolean contains(String type) {
                 return MSS.name().equals(type.toUpperCase()) ||
                         GSS.name().equals(type.toUpperCase()) ||
-                        LESS.name().equals(type.toUpperCase());
+                        LESS.name().equals(type.toUpperCase()) ||
+                        CSS.name().equals(type.toUpperCase());
             }
         };
 
