@@ -593,12 +593,7 @@ public class Compressor {
                     code = Compressor.compressCSS(fileSourceList, getGssFormat(isDebug, request), Lists.<String>newArrayList());
                     break;
                 case GSS:
-                    //压缩代码并设置浏览器断言
-                    code = Compressor.compressCSS(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
-                    break;
                 case LESS:
-                    code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), Lists.<String>newArrayList());
-                    break;
                 case MSS:
                     //压缩代码并设置浏览器断言
                     code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
@@ -620,7 +615,9 @@ public class Compressor {
 
     private static List<String> buildTrueConditions(HttpServletRequest request) {
         List<String> conditions = new FastList<String>();
-
+        if (!HttpUtils.getBooleanParam(request, "condition")) {
+            return conditions;
+        }
         //获取浏览器信息
         List<BrowserInfo> browserInfoList = HttpUtils.getRequestBrowserInfo(request);
         String prefix = "browser_";
@@ -881,7 +878,7 @@ public class Compressor {
 
         FileType type = getFileType(request);
 
-        if (type == FileType.GSS || type == FileType.MSS) {
+        if ((type == FileType.GSS || type == FileType.MSS || type == FileType.LESS) && HttpUtils.getBooleanParam(request, "condition")) {
             List<BrowserInfo> browserInfoList = HttpUtils.getRequestBrowserInfo(request);
             List<String> platformList = HttpUtils.getRequestPlatform(request);
             if (browserInfoList.size() > 0) {
