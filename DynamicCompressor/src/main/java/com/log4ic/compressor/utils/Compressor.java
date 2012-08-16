@@ -96,7 +96,7 @@ public class Compressor {
             public Object run(Context cx) {
                 cx.evaluateString(global,
                         lessRhinoContext +
-                                " var parser = less.Parser(),parseLess = function(less){var res;try{parser.parse(less, function(e, root) {if(e){throw e.message+', column'+e.column;}else{res=root.toCSS()}});}catch(e){throw e.message+', column'+e.column;}return res;};",
+                                " var parser = less.Parser(),parseLess = function(less){var res;try{parser.parse(less, function(e, root) {if(e){throw e.message+', column '+e.column;}else{res=root.toCSS()}});}catch(e){throw e.message+', column '+e.column;}return res;};",
                         "less.js", 0, null);
                 return null;
             }
