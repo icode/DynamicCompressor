@@ -1,8 +1,15 @@
 @nice-blue: #5B83AD;
 @light-blue: @nice-blue + #111;
 
-#header { .mixin() }
+#header {
+    .mixin
+}
 
-.mixin () when (true = @BROWSER_WEBKIT) {
+.mixin(){
+    color: @light-blue;
+}
+
+.mixin()when (@BROWSER_WEBKIT) {
     color: @nice-blue;
 }
+

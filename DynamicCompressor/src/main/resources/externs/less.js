@@ -2042,8 +2042,14 @@
             this.negate = negate;
         };
         tree.Condition.prototype.eval = function (env) {
-            var a = this.lvalue.eval(env),
+            //如果断言变量未定义默认为false
+            var a = false,
                 b = this.rvalue.eval(env);
+            //执行原始方法，获取值，并拦截错误信息
+            try {
+                a = this.lvalue.eval(env);
+            } catch (e) {
+            }
 
             var i = this.index, result;
 

@@ -33,6 +33,7 @@ import com.log4ic.compressor.exception.QueryStringEmptyException;
 import com.log4ic.compressor.exception.UnsupportedFileTypeException;
 import com.log4ic.compressor.utils.Compressor;
 import com.log4ic.compressor.utils.FileUtils;
+import com.log4ic.compressor.utils.less.exception.LessException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,6 +84,11 @@ public class CompressionServlet extends HttpServlet {
             resp.setStatus(501);
             writer.write("内容处理错误." + e.getMessage());
         } catch (GssParserException e) {
+            logger.error("内容处理错误,CSS语法错误.", e);
+            //501 - Not Implemented 服务器不支持实现请求所需要的功能，页眉值指定了未实现的配置
+            resp.setStatus(501);
+            writer.write("内容处理错误,CSS语法错误." + e.getMessage());
+        } catch (LessException e) {
             logger.error("内容处理错误,CSS语法错误.", e);
             //501 - Not Implemented 服务器不支持实现请求所需要的功能，页眉值指定了未实现的配置
             resp.setStatus(501);

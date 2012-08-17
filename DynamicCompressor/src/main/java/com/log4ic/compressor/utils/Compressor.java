@@ -44,6 +44,8 @@ import com.log4ic.compressor.exception.UnsupportedFileTypeException;
 import com.log4ic.compressor.servlet.http.ContentResponseWrapper;
 import com.log4ic.compressor.servlet.http.stream.ContentResponseStream;
 import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
+import com.log4ic.compressor.utils.less.LessEngine;
+import com.log4ic.compressor.utils.less.exception.LessException;
 import javolution.util.FastList;
 import javolution.util.FastMap;
 import org.apache.commons.lang3.StringUtils;
@@ -55,11 +57,10 @@ import org.slf4j.LoggerFactory;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
+import java.net.URL;
 import java.net.URLDecoder;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.MatchResult;
@@ -76,34 +77,6 @@ public class Compressor {
     }
 
     private static final Logger logger = LoggerFactory.getLogger(Compressor.class);
-
-    private static Global global = new Global();
-    private static final ContextFactory jsContextFactory = new ContextFactory();
-
-    private static String lessRhinoContext = null;
-
-    static {
-        try {
-            lessRhinoContext = FileUtils.InputStream2String(FileUtils.getResourceAsStream("/externs/less.js"), "UTF8");
-        } catch (Exception e) {
-            logger.error("", e);
-        }
-        global.init(jsContextFactory);
-        global.defineProperty("window", global, ScriptableObject.PERMANENT);
-
-        jsContextFactory.call(new ContextAction() {
-            @Override
-            public Object run(Context cx) {
-                cx.evaluateString(global,
-                        lessRhinoContext +
-                                " var parser = less.Parser(),parseLess = function(less){var res;try{parser.parse(less, function(e, root) {if(e){throw e.message+',line '+e.line+' column '+e.column;}else{res=root.toCSS()}});}catch(e){throw e.message+',line '+e.line+' column '+e.column;}return res;};",
-                        "less.js", 0, null);
-                return null;
-            }
-        });
-    }
-
-    private static final Function parseFn = (Function) global.get("parseLess", global);
 
     private static final Map<String, byte[]> progressCacheLock = new FastMap<String, byte[]>();
 
@@ -139,40 +112,8 @@ public class Compressor {
      * @param conditions
      * @return
      */
-    public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
-        return compressCSS(parseLess(codeList, conditions), format, conditions);
-    }
-
-    /**
-     * 解释less
-     *
-     * @param codeList
-     * @param conditions
-     * @return
-     * @throws GssParserException
-     */
-    public static List<SourceCode> parseLess(List<SourceCode> codeList, List<String> conditions) {
-        final List<SourceCode> resultCodeList = new FastList<SourceCode>();
-        StringBuilder conditionsBuilder = new StringBuilder();
-        for (String con : conditions) {
-            conditionsBuilder.append("@").append(con).append(":true;");
-        }
-        for (final SourceCode sourceCode : codeList) {
-            if (!sourceCode.getFileName().endsWith(".less") && !sourceCode.getFileName().endsWith(".mss")) {
-                resultCodeList.add(new SourceCode(sourceCode.getFileName(), sourceCode.getFileContents()));
-                continue;
-            }
-            final Object[] functionArgs = new Object[]{conditionsBuilder.toString() + sourceCode.getFileContents()};
-            jsContextFactory.call(new ContextAction() {
-                @Override
-                public Object run(Context cx) {
-                    Object result = parseFn.call(cx, global, global, functionArgs);
-                    resultCodeList.add(new SourceCode(sourceCode.getFileName(), Context.toString(result)));
-                    return null;
-                }
-            });
-        }
-        return resultCodeList;
+    public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException, LessException {
+        return compressCSS(LessEngine.parseLess(codeList, conditions), format, conditions);
     }
 
 
@@ -573,7 +514,7 @@ public class Compressor {
      * @throws com.log4ic.compressor.exception.CompressionException
      *
      */
-    public static String compressCode(List<SourceCode> fileSourceList, HttpServletRequest request, FileType type) throws GssParserException, CompressionException {
+    public static String compressCode(List<SourceCode> fileSourceList, HttpServletRequest request, FileType type) throws GssParserException, CompressionException, LessException {
         //压缩
         boolean isDebug = HttpUtils.getBooleanParam(request, "debug");
         String code = "";
@@ -666,11 +607,11 @@ public class Compressor {
      * @param response
      * @return
      */
-    public static void compress(HttpServletRequest request, HttpServletResponse response) throws CompressionException, GssParserException {
+    public static void compress(HttpServletRequest request, HttpServletResponse response) throws CompressionException, GssParserException, LessException {
         compress(request, response, null, null);
     }
 
-    public static void compress(HttpServletRequest request, HttpServletResponse response, CacheManager cacheManager) throws CompressionException, GssParserException {
+    public static void compress(HttpServletRequest request, HttpServletResponse response, CacheManager cacheManager) throws CompressionException, GssParserException, LessException {
         compress(request, response, cacheManager, null);
     }
 
@@ -768,9 +709,11 @@ public class Compressor {
         return type;
     }
 
-    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request) {
+    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request, FileType type) throws LessException {
         StringBuilder builder = new StringBuilder();
-        codeList = parseLess(codeList, buildTrueConditions(request));
+        if (type == FileType.LESS || type == FileType.MSS) {
+            codeList = LessEngine.parseLess(codeList, buildTrueConditions(request));
+        }
         for (SourceCode code : codeList) {
             builder.append(code.getFileContents());
         }
@@ -795,7 +738,7 @@ public class Compressor {
     private static String buildCode(final FileType type,
                                     final String queryString, final CacheManager cacheManager,
                                     HttpServletRequest request, HttpServletResponse response,
-                                    String fileDomain) throws CompressionException, GssParserException {
+                                    String fileDomain) throws CompressionException, GssParserException, LessException {
         Cache cache = null;
         try {
             //如果有缓存管理器则进行线程同步操作
@@ -827,7 +770,7 @@ public class Compressor {
                 //获取参数的文件并合并
                 List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type, fileDomain);
                 //压缩
-                code = HttpUtils.getBooleanParam(request, "nocompress") ? mergeCode(codeList, request) : compressCode(codeList, request, type);
+                code = HttpUtils.getBooleanParam(request, "nocompress") ? mergeCode(codeList, request, type) : compressCode(codeList, request, type);
                 if (cacheManager != null) {
                     final String finalCode = code;
                     new Thread(new Runnable() {
@@ -880,7 +823,7 @@ public class Compressor {
      *
      * @throws GssParserException
      */
-    public static void compress(HttpServletRequest request, HttpServletResponse response, CacheManager cacheManager, String fileDomain) throws CompressionException, GssParserException {
+    public static void compress(HttpServletRequest request, HttpServletResponse response, CacheManager cacheManager, String fileDomain) throws CompressionException, GssParserException, LessException {
 
         String queryString = HttpUtils.getQueryString(request);
 
