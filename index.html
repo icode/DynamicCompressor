@@ -31,32 +31,268 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <h3>Welcome to GitHub Pages.</h3>
+        <h3>动态压缩器能帮我做什么?</h3>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>合并压缩JS CSS代码,编译GSS模版,编译LESS模版,压缩后的版本会被缓存.</p>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<p>压缩器采用LRU算法,有较为完善的内存缓存与本地缓存相结合的缓存方式,将服务器响应时间做到更高.</p>
+
+<p>将CSS内的URL() 替换为绝对路径.亦可设置单独的静态文件服务器负载,减少静态文件对服务器的压力开销.</p>
+
+<p>无需过多人工干涉,代码管理方便,不会破坏原有代码.</p>
+
+<p>JS CSS版本变动后只需在URL后面再加一个参数,如代码变动之前为:</p>
+
+<pre><code>&lt;script src="/compress.js?v=0.001&amp;xx.js&amp;xxx.js"&gt;&lt;/script&gt;
 </code></pre>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+<p>代码变动后改为:</p>
 
-<h3>Designer Templates</h3>
+<pre><code>&lt;script src="/compress.js?v=0.002&amp;xx.js&amp;xxx.js"&gt;&lt;/script&gt;
+</code></pre>
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+<p>这样压缩器就会去应用新的代码合并压缩.</p>
 
-<h3>Rather Drive Stick?</h3>
+<p>值得一提的是 压缩器还支持将远程跨域文件与本地文件合并压缩.</p>
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+<p>如何使用压缩器来压缩JS CSS GSS LESS?</p>
 
-<h3>Authors and Contributors</h3>
+<p>和普通的JS CSS引用相同 唯一不同是以 /compress.<em>? 开头 （</em> 为文件类型后缀，目前支持css，gss，js, less, mss） 所有原来的JS CSS文件作为参数传入以&amp;符号连接.</p>
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+<p>如果你熟悉YUI Compressor这款工具对此方式应该并不陌生,这正是YAHOO所有服务器调用JS CSS的方法.</p>
 
-<h3>Support or Contact</h3>
+<p>如果你熟悉YUI框架对此也应该不会陌生 YUI 的 use 方法可以访问YAHOO的在线服务做到合并压缩,其格式也是这样的.</p>
 
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
+<p>如:
+<code>&lt;script src="/compress.js?xx.js&amp;xxx.js"&gt;&lt;/script&gt;</code></p>
+
+<p>压缩器只会选取/compress的后缀作为压缩的类型，如上例中的compress.js.</p>
+
+<p>压缩器目前只支持的文件格式 JS CSS GSS LESS MSS, MSS作为混合格式，将所有传入的CSS LESS GSS各自解释编译，并压缩优化.</p>
+
+<p>如果想把CSS和GSS、LESS混合压缩使用 请将MSS作为后缀,如:</p>
+
+<pre><code>&lt;link rel="stylesheet" href="/compress.mss?style.gss&amp;style1.css&amp;style2.css&amp;style.less"&gt;
+</code></pre>
+
+<h3>什么是GSS?</h3>
+
+<p>GSS是一个Java程序，它向CSS中添加了变量、函数、条件语句以及混合类型,使得我们更易于处理大型的CSS文件.</p>
+
+<p>开发者可以使用GSS这种工具来生成web应用程序或者网站所使用的真正的CSS文件.</p>
+
+<p>公共参数(gss css js 压缩通用):</p>
+
+<p>调试版本加debug参数,只合并不压缩加入nocompress参数</p>
+
+<p>JS独有参数:</p>
+
+<p>需要控制JS压缩级别加入level参数,0为只去空格和换行 1为普通压缩 2为高级压缩(慎用,会破坏接口,具体参考Closure Compiler官网),省略level参数默认为1</p>
+
+<p>CSS/GSS独有参数:</p>
+
+<p>需要对CSS美化而不压缩采用pretty参数</p>
+
+<p>参数如何加入:</p>
+
+<p>在/compress.css/gss?后面直接加入debug或其他参数即可</p>
+
+<p>如:/compress.css/gss?debug 或 /compress.css/gss?debug=true</p>
+
+<p>/compress.css/gss?level=0</p>
+
+<p>GSS浏览器/平台断言</p>
+
+<p>首先，建立GSS文件如style.gss。然后编写断言代码像这样：</p>
+
+<pre><code>        @if (BROWSER_IE) {
+        @if (BROWSER_IE6) {
+        @def GOOG_INLINE_BLOCK_DISPLAY inline;
+        } @elseif (BROWSER_IE7) {
+        @def GOOG_INLINE_BLOCK_DISPLAY inline;
+        } @else {
+        @def GOOG_INLINE_BLOCK_DISPLAY inline-block;
+        }
+        } @elseif (BROWSER_FF2) {
+        @def GOOG_INLINE_BLOCK_DISPLAY -moz-inline-box;
+        } @elseif (BROWSER_CHROME) {
+        @def GOOG_INLINE_BLOCK_DISPLAY -webkit-inline-box;
+        } @elseif(PLATFORM_MOBILE){
+        @def GOOG_INLINE_BLOCK_DISPLAY -o-inline-box;
+        } @elseif(BROWSER_WEBKIT){
+        @if(PLATFORM_ANDROID){
+        @def GOOG_INLINE_BLOCK_DISPLAY -webkit-box;
+        }@else{
+        @def GOOG_INLINE_BLOCK_DISPLAY -webkit-inline-box;
+        }
+        } @else {
+        @def GOOG_INLINE_BLOCK_DISPLAY inline-block;
+        }
+
+        .goog-inline-block {
+        position: relative;
+        display: GOOG_INLINE_BLOCK_DISPLAY;
+        }
+</code></pre>
+
+<p>BROWSER<em>* 、PLATFORM</em>*为断言规则，根据浏览器用户代理生成，生成带有版本的浏览器和平台断言规则，浏览器版本截止至第二位，如BROWSER_FF2.4，BROWSER_FF2。</p>
+
+<p>BROWSER<em>*用来判断浏览器，PLATFORM</em>*用来判断平台，如PLATFORM_ANDROID、PLATFORM_MOBILE、PLATFORM_LINUX、PLATFORM_WINDOWS</p>
+
+<p>接着，加入到html中，像这样：</p>
+
+<pre><code>        &lt;link href="/compress.gss?condition&amp;/style/style.gss&amp;/style/style1.css" rel="stylesheet"&gt;
+</code></pre>
+
+<p>然后，我们就可以用各种浏览器来测试了。或者选择直接更改用户代理来测试。</p>
+
+<p>*注：参数 condition 表示开启浏览器断言默认关闭，开启浏览器断言后，CSS的缓存将根据浏览器代理决定。</p>
+
+<p>GSS更多使用方法</p>
+
+<h2>变量</h2>
+
+<p>变量是使用“@def”来定义的。下面的代码示例展示了如何使用变量：</p>
+
+<pre><code>    @def BG_COLOR rgb(235, 239, 249);
+    @def DIALOG_BG_COLOR BG_COLOR;
+    body {
+    background-color: BG_COLOR;
+    }
+
+    .dialog {
+    background-color: DIALOG_BG_COLOR;
+    }
+</code></pre>
+
+<p>得到的CSS如下：</p>
+
+<pre><code>    body {
+    background-color: #ebeff9;
+    }
+    .dialog {
+    background-color: #ebeff9;
+    }
+</code></pre>
+
+<h2>函数</h2>
+
+<p>GSS引入了大量数学函数，使用它们你可以对数字型的值——比方说像素——进行以下操作： add()、 sub()、mult()、 div()、 min()以及max()。使用这些函数的示例如下：
+``
+    <a href="https://github.com/def" class="user-mention">@def</a> LEFT_WIDTH 100px;
+    <a href="https://github.com/def" class="user-mention">@def</a> LEFT_PADDING 5px;
+    <a href="https://github.com/def" class="user-mention">@def</a> RIGHT_PADDING 5px;
+    .content {
+    position: absolute;
+    margin-left: add(LEFT_PADDING,
+    LEFT_WIDTH,
+    RIGHT_PADDING,
+    px);</p>
+
+<pre><code>得到的CSS如下所示：
+</code></pre>
+
+<pre><code>.content {
+position: absolute;
+margin-left: 110px;
+}
+</code></pre>
+
+<pre><code>##更多内置函数:
+</code></pre>
+
+<p>add()
+sub()
+mult()
+divide()
+min()
+max()
+blendColorsHsb(startColor, endColor)
+blendColorsRgb(startColor, endColor)
+makeMutedColor(backgroundColor, foregroundColor [, saturationLoss])
+addHsbToCssColor(baseColor, hueToAdd, saturationToAdd, brightnessToAdd)
+makeContrastingColor(color, similarityIndex)
+adjustBrightness(color, brightness)</p>
+
+<pre><code>##条件语句
+
+GSS让我们可以使用@if、@elseif和@else，从而基于某些变量的值来创建条件语句的分支。
+
+##混合类型
+
+混合类型是为了重用带有参数的对结构体的声明，如下示例所示：
+</code></pre>
+
+<pre><code>@defmixin size(WIDTH, HEIGHT) {
+width: WIDTH;
+height: HEIGHT;
+}
+
+.image {
+@mixin size(200px, 300px);
+}
+</code></pre>
+
+<p>当解决跨浏览器的问题时，混合类型会更有用：</p>
+
+<pre><code>@defmixin gradient(POS, HSL1, HSL2, HSL3, COLOR, FALLBACK_COLOR) {
+background-color: FALLBACK_COLOR; /* fallback color if gradients are not supported */
+background-image: -webkit-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Chrome 10+,Safari 5.1+ */
+/* @alternate */ background-image: -moz-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* FF3.6+ */
+/* @alternate */ background-image: -ms-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* IE10 */
+/* @alternate */ background-image: -o-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Opera 11.10+ */
+}
+
+.header {
+@mixin gradient(top, 0%, 50%, 70%, #cc0000, #f07575);
+}
+</code></pre>
+
+<pre><code>结果如下：
+</code></pre>
+
+<pre><code>.header {
+background-color: #f07575;
+background-image: -webkit-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+background-image: -moz-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+background-image: -ms-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+background-image: -o-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+}
+</code></pre>
+
+<pre><code>/* @alternate */ 注解说明
+
+我们在上面代码中看到了注解alternate,这个注解是用来标记压缩时保留此CSS项,也不做错误检查.
+
+###LESS?
+
+less语法及使用请参考中文官方 http://www.lesscss.net/
+
+压缩器为less同样提供了浏览器断言如：
+</code></pre>
+
+<p>@nice-blue: #5B83AD;
+@light-blue: @nice-blue + #111;</p>
+
+<h1>header {</h1>
+
+<pre><code>.mixin
+</code></pre>
+
+<p>}
+/<strong>默认值必须在最前面</strong>/
+.mixin(){
+    color: @light-blue;
+}</p>
+
+<p>.mixin()when (@BROWSER_WEBKIT) {
+    color: @nice-blue;
+}</p>
+
+<pre><code>@BROWSER_WEBKIT为断言规则，断言规则同GSS断言。
+
+与GSS不同，LESS不支持if/else的判断，而是用混合的引导方式，如上面的代码，混合必须有一个默认值，或者必须有一个永远为真的引导（when），这个默认值/引导（when）必须在其他引导之前。
+</code></pre>
       </section>
     </div>
 
