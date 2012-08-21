@@ -177,31 +177,30 @@
 
 <h4>函数</h4>
 
-<p>GSS引入了大量数学函数，使用它们你可以对数字型的值——比方说像素——进行以下操作： add()、 sub()、mult()、 div()、 min()以及max()。使用这些函数的示例如下：
-``
-    <a href="https://github.com/def" class="user-mention">@def</a> LEFT_WIDTH 100px;
-    <a href="https://github.com/def" class="user-mention">@def</a> LEFT_PADDING 5px;
-    <a href="https://github.com/def" class="user-mention">@def</a> RIGHT_PADDING 5px;
+<p>GSS引入了大量数学函数，使用它们你可以对数字型的值——比方说像素——进行以下操作： add()、 sub()、mult()、 div()、 min()以及max()。使用这些函数的示例如下：</p>
+
+<pre><code>    @def LEFT_WIDTH 100px;
+    @def LEFT_PADDING 5px;
+    @def RIGHT_PADDING 5px;
     .content {
     position: absolute;
     margin-left: add(LEFT_PADDING,
     LEFT_WIDTH,
     RIGHT_PADDING,
-    px);</p>
-
-<pre><code>得到的CSS如下所示：
+    px);
 </code></pre>
 
-<pre><code>.content {
-position: absolute;
-margin-left: 110px;
-}
+<p>得到的CSS如下所示：</p>
+
+<pre><code>    .content {
+    position: absolute;
+    margin-left: 110px;
+    }
 </code></pre>
 
-<pre><code>####更多内置函数:
-</code></pre>
+<h4>更多内置函数:</h4>
 
-<p>add()
+<pre><code>add()
 sub()
 mult()
 divide()
@@ -212,87 +211,80 @@ blendColorsRgb(startColor, endColor)
 makeMutedColor(backgroundColor, foregroundColor [, saturationLoss])
 addHsbToCssColor(baseColor, hueToAdd, saturationToAdd, brightnessToAdd)
 makeContrastingColor(color, similarityIndex)
-adjustBrightness(color, brightness)</p>
-
-<pre><code>####条件语句
-
-GSS让我们可以使用@if、@elseif和@else，从而基于某些变量的值来创建条件语句的分支。
-
-####混合类型
-
-混合类型是为了重用带有参数的对结构体的声明，如下示例所示：
+adjustBrightness(color, brightness)
 </code></pre>
 
-<pre><code>@defmixin size(WIDTH, HEIGHT) {
-width: WIDTH;
-height: HEIGHT;
+<h4>条件语句</h4>
+
+<p>GSS让我们可以使用@if、@elseif和@else，从而基于某些变量的值来创建条件语句的分支。</p>
+
+<h4>混合类型</h4>
+
+<p>混合类型是为了重用带有参数的对结构体的声明，如下示例所示：</p>
+
+<pre><code>    @defmixin size(WIDTH, HEIGHT) {
+    width: WIDTH;
+    height: HEIGHT;
+    }
+
+    .image {
+    @mixin size(200px, 300px);
+    }
+当解决跨浏览器的问题时，混合类型会更有用：
+
+    @defmixin gradient(POS, HSL1, HSL2, HSL3, COLOR, FALLBACK_COLOR) {
+    background-color: FALLBACK_COLOR; /* fallback color if gradients are not supported */
+    background-image: -webkit-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Chrome 10+,Safari 5.1+ */
+    /* @alternate */ background-image: -moz-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* FF3.6+ */
+    /* @alternate */ background-image: -ms-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* IE10 */
+    /* @alternate */ background-image: -o-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Opera 11.10+ */
+    }
+
+    .header {
+    @mixin gradient(top, 0%, 50%, 70%, #cc0000, #f07575);
+    }
+</code></pre>
+
+<p>结果如下：</p>
+
+<pre><code>    .header {
+    background-color: #f07575;
+    background-image: -webkit-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+    background-image: -moz-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+    background-image: -ms-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+    background-image: -o-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
+    }
+</code></pre>
+
+<p>/* <a href="https://github.com/Alternate" class="user-mention">@Alternate</a> */ 注解说明</p>
+
+<p>我们在上面代码中看到了注解alternate,这个注解是用来标记压缩时保留此CSS项,也不做错误检查.</p>
+
+<h3>LESS?</h3>
+
+<p>less语法及使用请参考中文官方 <a href="http://www.lesscss.net/">http://www.lesscss.net/</a></p>
+
+<p>压缩器为less同样提供了浏览器断言如：</p>
+
+<pre><code>@nice-blue: #5B83AD;
+@light-blue: @nice-blue + #111;
+
+#header {
+    .mixin
 }
-
-.image {
-@mixin size(200px, 300px);
-}
-</code></pre>
-
-<p>当解决跨浏览器的问题时，混合类型会更有用：</p>
-
-<pre><code>@defmixin gradient(POS, HSL1, HSL2, HSL3, COLOR, FALLBACK_COLOR) {
-background-color: FALLBACK_COLOR; /* fallback color if gradients are not supported */
-background-image: -webkit-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Chrome 10+,Safari 5.1+ */
-/* @alternate */ background-image: -moz-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* FF3.6+ */
-/* @alternate */ background-image: -ms-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* IE10 */
-/* @alternate */ background-image: -o-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Opera 11.10+ */
-}
-
-.header {
-@mixin gradient(top, 0%, 50%, 70%, #cc0000, #f07575);
-}
-</code></pre>
-
-<pre><code>结果如下：
-</code></pre>
-
-<pre><code>.header {
-background-color: #f07575;
-background-image: -webkit-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
-background-image: -moz-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
-background-image: -ms-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
-background-image: -o-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
-}
-</code></pre>
-
-<pre><code>/* @alternate */ 注解说明
-
-我们在上面代码中看到了注解alternate,这个注解是用来标记压缩时保留此CSS项,也不做错误检查.
-
-###LESS?
-
-less语法及使用请参考中文官方 http://www.lesscss.net/
-
-压缩器为less同样提供了浏览器断言如：
-</code></pre>
-
-<p>@nice-blue: #5B83AD;
-@light-blue: @nice-blue + #111;</p>
-
-<h1>header {</h1>
-
-<pre><code>.mixin
-</code></pre>
-
-<p>}
-/<strong>默认值必须在最前面</strong>/
+/**默认值必须在最前面**/
 .mixin(){
     color: @light-blue;
-}</p>
+}
 
-<p>.mixin()when (@BROWSER_WEBKIT) {
+.mixin()when (@BROWSER_WEBKIT) {
     color: @nice-blue;
-}</p>
-
-<pre><code>@BROWSER_WEBKIT为断言规则，断言规则同GSS断言。
-
-与GSS不同，LESS不支持if/else的判断，而是用混合的引导方式，如上面的代码，混合必须有一个默认值，或者必须有一个永远为真的引导（when），这个默认值/引导（when）必须在其他引导之前。
+}
 </code></pre>
+
+<p>@BROWSER_WEBKIT为断言规则，断言规则同GSS断言。</p>
+
+<p>与GSS不同，LESS不支持if/else的判断，而是用混合的引导方式，如上面的代码，混合必须有一个默认值，或者必须有一个永远为真的引导（when），这个默认值/引导（when）必须在其他引导之前。</p>
       </section>
     </div>
 
