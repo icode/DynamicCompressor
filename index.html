@@ -105,34 +105,34 @@
 
 <p>首先，建立GSS文件如style.gss。然后编写断言代码像这样：</p>
 
-<pre><code>        @if (BROWSER_IE) {
-        @if (BROWSER_IE6) {
-        @def GOOG_INLINE_BLOCK_DISPLAY inline;
-        } @elseif (BROWSER_IE7) {
-        @def GOOG_INLINE_BLOCK_DISPLAY inline;
-        } @else {
-        @def GOOG_INLINE_BLOCK_DISPLAY inline-block;
-        }
-        } @elseif (BROWSER_FF2) {
-        @def GOOG_INLINE_BLOCK_DISPLAY -moz-inline-box;
-        } @elseif (BROWSER_CHROME) {
-        @def GOOG_INLINE_BLOCK_DISPLAY -webkit-inline-box;
-        } @elseif(PLATFORM_MOBILE){
-        @def GOOG_INLINE_BLOCK_DISPLAY -o-inline-box;
-        } @elseif(BROWSER_WEBKIT){
-        @if(PLATFORM_ANDROID){
-        @def GOOG_INLINE_BLOCK_DISPLAY -webkit-box;
-        }@else{
-        @def GOOG_INLINE_BLOCK_DISPLAY -webkit-inline-box;
-        }
-        } @else {
-        @def GOOG_INLINE_BLOCK_DISPLAY inline-block;
-        }
+<pre><code>@if (BROWSER_IE) {
+@if (BROWSER_IE6) {
+@def GOOG_INLINE_BLOCK_DISPLAY inline;
+} @elseif (BROWSER_IE7) {
+@def GOOG_INLINE_BLOCK_DISPLAY inline;
+} @else {
+@def GOOG_INLINE_BLOCK_DISPLAY inline-block;
+}
+} @elseif (BROWSER_FF2) {
+@def GOOG_INLINE_BLOCK_DISPLAY -moz-inline-box;
+} @elseif (BROWSER_CHROME) {
+@def GOOG_INLINE_BLOCK_DISPLAY -webkit-inline-box;
+} @elseif(PLATFORM_MOBILE){
+@def GOOG_INLINE_BLOCK_DISPLAY -o-inline-box;
+} @elseif(BROWSER_WEBKIT){
+@if(PLATFORM_ANDROID){
+@def GOOG_INLINE_BLOCK_DISPLAY -webkit-box;
+}@else{
+@def GOOG_INLINE_BLOCK_DISPLAY -webkit-inline-box;
+}
+} @else {
+@def GOOG_INLINE_BLOCK_DISPLAY inline-block;
+}
 
-        .goog-inline-block {
-        position: relative;
-        display: GOOG_INLINE_BLOCK_DISPLAY;
-        }
+.goog-inline-block {
+    position: relative;
+    display: GOOG_INLINE_BLOCK_DISPLAY;
+}
 </code></pre>
 
 <p>BROWSER<em>* 、PLATFORM</em>*为断言规则，根据浏览器用户代理生成，生成带有版本的浏览器和平台断言规则，浏览器版本截止至第二位，如BROWSER_FF2.4，BROWSER_FF2。</p>
@@ -141,7 +141,7 @@
 
 <p>接着，加入到html中，像这样：</p>
 
-<pre><code>        &lt;link href="/compress.gss?condition&amp;/style/style.gss&amp;/style/style1.css" rel="stylesheet"&gt;
+<pre><code>&lt;link href="/compress.gss?condition&amp;/style/style.gss&amp;/style/style1.css" rel="stylesheet"&gt;
 </code></pre>
 
 <p>然后，我们就可以用各种浏览器来测试了。或者选择直接更改用户代理来测试。</p>
@@ -154,48 +154,49 @@
 
 <p>变量是使用“@def”来定义的。下面的代码示例展示了如何使用变量：</p>
 
-<pre><code>    @def BG_COLOR rgb(235, 239, 249);
-    @def DIALOG_BG_COLOR BG_COLOR;
-    body {
+<pre><code>@def BG_COLOR rgb(235, 239, 249);
+@def DIALOG_BG_COLOR BG_COLOR;
+body {
     background-color: BG_COLOR;
-    }
+}
 
-    .dialog {
+.dialog {
     background-color: DIALOG_BG_COLOR;
-    }
+}
 </code></pre>
 
 <p>得到的CSS如下：</p>
 
-<pre><code>    body {
+<pre><code>body {
     background-color: #ebeff9;
-    }
-    .dialog {
+}
+.dialog {
     background-color: #ebeff9;
-    }
+}
 </code></pre>
 
 <h4>函数</h4>
 
 <p>GSS引入了大量数学函数，使用它们你可以对数字型的值——比方说像素——进行以下操作： add()、 sub()、mult()、 div()、 min()以及max()。使用这些函数的示例如下：</p>
 
-<pre><code>    @def LEFT_WIDTH 100px;
-    @def LEFT_PADDING 5px;
-    @def RIGHT_PADDING 5px;
-    .content {
+<pre><code>@def LEFT_WIDTH 100px;
+@def LEFT_PADDING 5px;
+@def RIGHT_PADDING 5px;
+.content {
     position: absolute;
     margin-left: add(LEFT_PADDING,
-    LEFT_WIDTH,
-    RIGHT_PADDING,
-    px);
+                        LEFT_WIDTH,
+                        RIGHT_PADDING,
+                        px);
+}
 </code></pre>
 
 <p>得到的CSS如下所示：</p>
 
-<pre><code>    .content {
+<pre><code>.content {
     position: absolute;
     margin-left: 110px;
-    }
+}
 </code></pre>
 
 <h4>更多内置函数:</h4>
@@ -222,17 +223,19 @@ adjustBrightness(color, brightness)
 
 <p>混合类型是为了重用带有参数的对结构体的声明，如下示例所示：</p>
 
-<pre><code>    @defmixin size(WIDTH, HEIGHT) {
+<pre><code>@defmixin size(WIDTH, HEIGHT) {
     width: WIDTH;
     height: HEIGHT;
     }
 
-    .image {
-    @mixin size(200px, 300px);
-    }
-当解决跨浏览器的问题时，混合类型会更有用：
+.image {
+@mixin size(200px, 300px);
+}
+</code></pre>
 
-    @defmixin gradient(POS, HSL1, HSL2, HSL3, COLOR, FALLBACK_COLOR) {
+<p>当解决跨浏览器的问题时，混合类型会更有用：</p>
+
+<pre><code>@defmixin gradient(POS, HSL1, HSL2, HSL3, COLOR, FALLBACK_COLOR) {
     background-color: FALLBACK_COLOR; /* fallback color if gradients are not supported */
     background-image: -webkit-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Chrome 10+,Safari 5.1+ */
     /* @alternate */ background-image: -moz-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* FF3.6+ */
@@ -240,20 +243,20 @@ adjustBrightness(color, brightness)
     /* @alternate */ background-image: -o-linear-gradient(POS, hsl(HSL1, HSL2, HSL3), COLOR); /* Opera 11.10+ */
     }
 
-    .header {
+.header {
     @mixin gradient(top, 0%, 50%, 70%, #cc0000, #f07575);
-    }
+}
 </code></pre>
 
 <p>结果如下：</p>
 
-<pre><code>    .header {
+<pre><code>.header {
     background-color: #f07575;
     background-image: -webkit-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
     background-image: -moz-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
     background-image: -ms-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
     background-image: -o-linear-gradient(top,hsl(0%,50%,70%) ,#cc0000);
-    }
+}
 </code></pre>
 
 <p>/* <a href="https://github.com/Alternate" class="user-mention">@Alternate</a> */ 注解说明</p>
