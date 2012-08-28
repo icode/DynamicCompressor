@@ -400,7 +400,7 @@ public class Compressor {
                     String url = result.group(1).replaceAll("'|\"", "");
                     String cssUrl = fileUrl;
                     //绝对路径不处理
-                    if (!HttpUtils.isHttpProtocol(url)) {
+                    if (!HttpUtils.isHttpProtocol(url) && !url.startsWith("/")) {
                         StringBuilder pathBuffer = new StringBuilder();
                         if (url.startsWith("..")) {//如果访问上级目录
                             String[] imgUrl = url.split("/");
@@ -430,20 +430,21 @@ public class Compressor {
                             pathBuffer.append("/");
                             pathBuffer.append(url);
                         }
-                        //如果设置了静态文件路径，并且cssUrl不是http开头（视为其他服务加载的文件)，则将文件服务器域名指向设置的域名
-                        if (StringUtils.isNotBlank(fileDomain) && !HttpUtils.isHttpProtocol(cssUrl)) {
-                            if (!fileDomain.endsWith("/") && !cssUrl.startsWith("/")) {
-                                fileDomain = fileDomain + "/";
-                            } else if (fileDomain.endsWith("/") && cssUrl.startsWith("/")) {
-                                cssUrl = cssUrl.substring(1);
-                            }
-                            if (!HttpUtils.isHttpProtocol(fileDomain)) {
-                                fileDomain = "http://" + fileDomain;
-                            }
-                            cssUrl = fileDomain + cssUrl;
-                        }
                         pathBuffer.insert(0, cssUrl);
                         url = pathBuffer.toString();
+                    }
+
+                    //如果设置了静态文件路径，并且url不是http开头（视为其他服务加载的文件)，则将文件服务器域名指向设置的域名
+                    if (StringUtils.isNotBlank(fileDomain) && !HttpUtils.isHttpProtocol(url)) {
+                        if (!fileDomain.endsWith("/") && !url.startsWith("/")) {
+                            fileDomain = fileDomain + "/";
+                        } else if (fileDomain.endsWith("/") && url.startsWith("/")) {
+                            url = url.substring(1);
+                        }
+                        if (!HttpUtils.isHttpProtocol(fileDomain)) {
+                            fileDomain = "http://" + fileDomain;
+                        }
+                        url = fileDomain + url;
                     }
                     codeBuffer.append(url);
                     codeBuffer.append(")");
