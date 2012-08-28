@@ -49,18 +49,17 @@ import com.log4ic.compressor.utils.less.exception.LessException;
 import javolution.util.FastList;
 import javolution.util.FastMap;
 import org.apache.commons.lang3.StringUtils;
-import org.mozilla.javascript.*;
-import org.mozilla.javascript.tools.shell.Global;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
-import java.net.URL;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.MatchResult;
@@ -301,6 +300,56 @@ public class Compressor {
         return fixUrlPath(code, fileUrl, type, null);
     }
 
+    public static String fix(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
+        return fix(code, fileUrl, type, null, request, response);
+    }
+
+    public static String fix(String code, String fileUrl, FileType type, String fileDomain, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
+        code = importCss(code, fileUrl, type, fileDomain, request, response);
+        return fixUrlPath(code, fileUrl, type, fileDomain);
+    }
+
+    public static String importCss(String code, String fileUrl, FileType type, String fileDomain, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
+        StringBuilder codeBuffer = new StringBuilder();
+        switch (type) {
+            case GSS:
+            case CSS:
+            case LESS:
+            case MSS:
+                Pattern pattern = Pattern.compile("@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?", Pattern.CASE_INSENSITIVE);
+                Matcher matcher = pattern.matcher(code);
+                String[] codeFragments = pattern.split(code);
+                fileUrl = fileUrl.substring(0, fileUrl.lastIndexOf("/") + 1);
+                int i = 0;
+                while (matcher.find()) {
+                    codeBuffer.append(codeFragments[i]);
+                    String cssPath = "";
+                    String cssFile = matcher.group(1);
+                    if (!HttpUtils.isHttpProtocol(cssFile) && !cssFile.startsWith("/")) {
+                        cssPath = fileUrl + cssFile;
+                    }
+                    if (request.getAttribute(cssPath) == null) {
+                        logger.debug("导入[{}]文件", cssPath);
+                        request.setAttribute(cssPath, true);
+                        List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type, fileDomain);
+                        codeBuffer.append(sourceCodes.get(0).getFileContents());
+                    }
+                    i++;
+                }
+                if (i == 0) {
+                    return code;
+                } else {
+                    if (codeFragments.length >= i + 1) {
+                        codeBuffer.append(codeFragments[i]);
+                    }
+                }
+                break;
+            default:
+                return code;
+        }
+        return codeBuffer.toString();
+    }
+
     /**
      * 修正文件内的URL相对指向
      *
@@ -386,14 +435,14 @@ public class Compressor {
                 if (i == 0) {
                     return code;
                 } else {
-                    if (codeFragments[i] != null) {
+                    if (codeFragments.length >= i + 1) {
                         codeBuffer.append(codeFragments[i]);
                     }
                 }
                 logger.debug("修正文件内的URL相对指向完毕...");
                 break;
             default:
-                codeBuffer.append(code);
+                return code;
         }
         return codeBuffer.toString();
     }
@@ -465,7 +514,7 @@ public class Compressor {
                 try {
                     //如果是http/https 协议开头则视为跨域
                     if (HttpUtils.isHttpProtocol(url)) {
-                        code.append(Compressor.fixUrlPath(HttpUtils.requestFile(url), url, type));
+                        code.append(Compressor.fix(HttpUtils.requestFile(url), url, type, request, response));
                     } else {
                         //否则视为同域
                         if (wrapperResponse == null) {
@@ -474,7 +523,7 @@ public class Compressor {
                         request.getRequestDispatcher(url).include(request, wrapperResponse);
                         wrapperResponse.flushBuffer();
                         String fragment = wrapperResponse.getContent();
-                        fragment = Compressor.fixUrlPath(fragment, url, type, fileDomain);
+                        fragment = Compressor.fix(fragment, url, type, fileDomain, request, response);
                         code.append(fragment);
                         code.append("\n");
                         ((ContentResponseStream) wrapperResponse.getOutputStream()).reset();

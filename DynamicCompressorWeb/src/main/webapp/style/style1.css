@@ -125,3 +125,5 @@ fieldset {
     padding: 5px 0 0;
     color: #000;
 }
+@import "style.css";
+@import "style2.css";
