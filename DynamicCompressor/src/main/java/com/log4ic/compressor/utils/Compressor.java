@@ -323,10 +323,12 @@ public class Compressor {
                 int i = 0;
                 while (matcher.find()) {
                     codeBuffer.append(codeFragments[i]);
-                    String cssPath = "";
+                    String cssPath;
                     String cssFile = matcher.group(1);
                     if (!HttpUtils.isHttpProtocol(cssFile) && !cssFile.startsWith("/")) {
                         cssPath = fileUrl + cssFile;
+                    } else {
+                        cssPath = cssFile;
                     }
                     if (request.getAttribute(cssPath) == null) {
                         logger.debug("导入[{}]文件", cssPath);
