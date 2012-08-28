@@ -306,48 +306,63 @@ public class Compressor {
 
     public static String fix(String code, String fileUrl, FileType type, String fileDomain, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
         code = importCss(code, fileUrl, type, fileDomain, request, response);
+        if (request.getAttribute("@import") != null) {
+            return code;
+        }
         return fixUrlPath(code, fileUrl, type, fileDomain);
     }
 
     public static String importCss(String code, String fileUrl, FileType type, String fileDomain, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
+        Object isImport = request.getAttribute("@import");
+        boolean importing = false;
+        if (isImport == null) {
+            request.setAttribute("@import", true);
+            importing = true;
+        }
         StringBuilder codeBuffer = new StringBuilder();
-        switch (type) {
-            case GSS:
-            case CSS:
-            case LESS:
-            case MSS:
-                Pattern pattern = Pattern.compile("@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?", Pattern.CASE_INSENSITIVE);
-                Matcher matcher = pattern.matcher(code);
-                String[] codeFragments = pattern.split(code);
-                fileUrl = fileUrl.substring(0, fileUrl.lastIndexOf("/") + 1);
-                int i = 0;
-                while (matcher.find()) {
-                    codeBuffer.append(codeFragments[i]);
-                    String cssPath;
-                    String cssFile = matcher.group(1);
-                    if (!HttpUtils.isHttpProtocol(cssFile) && !cssFile.startsWith("/")) {
-                        cssPath = fileUrl + cssFile;
-                    } else {
-                        cssPath = cssFile;
-                    }
-                    if (request.getAttribute(cssPath) == null) {
-                        logger.debug("导入[{}]文件", cssPath);
-                        request.setAttribute(cssPath, true);
-                        List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type, fileDomain);
-                        codeBuffer.append(sourceCodes.get(0).getFileContents());
-                    }
-                    i++;
-                }
-                if (i == 0) {
-                    return code;
-                } else {
-                    if (codeFragments.length >= i + 1) {
+        try {
+            switch (type) {
+                case GSS:
+                case CSS:
+                case LESS:
+                case MSS:
+                    Pattern pattern = Pattern.compile("@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?", Pattern.CASE_INSENSITIVE);
+                    Matcher matcher = pattern.matcher(code);
+                    String[] codeFragments = pattern.split(code);
+                    fileUrl = fileUrl.substring(0, fileUrl.lastIndexOf("/") + 1);
+                    int i = 0;
+                    while (matcher.find()) {
                         codeBuffer.append(codeFragments[i]);
+                        String cssPath;
+                        String cssFile = matcher.group(1);
+                        if (!HttpUtils.isHttpProtocol(cssFile) && !cssFile.startsWith("/")) {
+                            cssPath = fileUrl + cssFile;
+                        } else {
+                            cssPath = cssFile;
+                        }
+                        if (request.getAttribute(cssPath) == null) {
+                            logger.debug("导入[{}]文件", cssPath);
+                            request.setAttribute(cssPath, true);
+                            List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type, fileDomain);
+                            codeBuffer.append(sourceCodes.get(0).getFileContents());
+                        }
+                        i++;
                     }
-                }
-                break;
-            default:
-                return code;
+                    if (i == 0) {
+                        return code;
+                    } else {
+                        if (codeFragments.length >= i + 1) {
+                            codeBuffer.append(codeFragments[i]);
+                        }
+                    }
+                    break;
+                default:
+                    return code;
+            }
+        } finally {
+            if (importing) {
+                request.removeAttribute("@import");
+            }
         }
         return codeBuffer.toString();
     }
