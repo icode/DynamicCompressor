@@ -300,6 +300,8 @@ public class Compressor {
         return fixUrlPath(code, fileUrl, type, null);
     }
 
+    private static final String importPatternStr = "@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?";
+    private static final Pattern importPattern = Pattern.compile(importPatternStr, Pattern.CASE_INSENSITIVE);
 
     public static List<SourceCode> importCss(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
         List<SourceCode> sourceCodeList = Lists.newArrayList();
@@ -308,9 +310,8 @@ public class Compressor {
             case CSS:
             case LESS:
             case MSS:
-                Pattern pattern = Pattern.compile("@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?", Pattern.CASE_INSENSITIVE);
-                Matcher matcher = pattern.matcher(code);
-                String[] codeFragments = pattern.split(code);
+                Matcher matcher = importPattern.matcher(code);
+                String[] codeFragments = importPattern.split(code);
                 int extendsSplitIndex = fileUrl.lastIndexOf(".");
                 String fileNoneExtendsPath = fileUrl.substring(0, extendsSplitIndex);
                 String fileExtends = "__part__" + fileUrl.substring(extendsSplitIndex);
@@ -318,7 +319,15 @@ public class Compressor {
                 int i = 0;
                 while (matcher.find()) {
                     if (StringUtils.isNotBlank(codeFragments[i])) {
-                        sourceCodeList.add(new SourceCode(fileNoneExtendsPath + i + fileExtends, codeFragments[i]));
+                        if ((codeFragments[i].lastIndexOf("/*") > codeFragments[i].lastIndexOf("*/")
+                                || codeFragments[i].lastIndexOf("//") > codeFragments[i].lastIndexOf("\n"))
+                                && codeFragments.length > i + 1) {
+                            codeFragments[i + 1] = codeFragments[i] + codeFragments[i + 1];
+                            i++;
+                            continue;
+                        } else {
+                            sourceCodeList.add(new SourceCode(fileNoneExtendsPath + i + fileExtends, codeFragments[i]));
+                        }
                     }
                     String cssPath;
                     String cssFile = matcher.group(1);

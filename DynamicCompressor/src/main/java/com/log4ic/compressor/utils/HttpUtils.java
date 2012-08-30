@@ -51,7 +51,7 @@ public class HttpUtils {
     private static final Logger logger = LoggerFactory.getLogger(Compressor.class);
 
     public static boolean isHttpProtocol(String url) {
-        return url.startsWith("http://") || url.startsWith("https://");
+        return StringUtils.isNotBlank(url) && (url.startsWith("http://") || url.startsWith("https://"));
     }
 
     private static List<BrowserTester> browserTesterList = new FastList<BrowserTester>();
