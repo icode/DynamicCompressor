@@ -31,6 +31,16 @@
 // 使其在断言的时候遇到undefined不中段构建
 //为支持浏览器断言
 (function (tree) {
+    if (typeof tree.Condition !== 'function') {
+        tree.Condition = function (op, l, r, i, negate) {
+            this.op = op.trim();
+            this.lvalue = l;
+            this.rvalue = r;
+            this.index = i;
+            this.negate = negate;
+        };
+    }
+
     tree.Condition.prototype.eval = function (env) {
         //如果断言变量未定义默认为false
         var a = false,
@@ -55,14 +65,17 @@
                     } else if (b.compare) {
                         result = b.compare(a);
                     } else {
-                        throw { type: "Type",
-                            message: "Unable to perform comparison",
-                            index: i };
+                        throw { type:"Type",
+                            message:"Unable to perform comparison",
+                            index:i };
                     }
                     switch (result) {
-                        case -1: return op === '<' || op === '=<';
-                        case  0: return op === '=' || op === '>=' || op === '=<';
-                        case  1: return op === '>' || op === '>=';
+                        case -1:
+                            return op === '<' || op === '=<';
+                        case  0:
+                            return op === '=' || op === '>=' || op === '=<';
+                        case  1:
+                            return op === '>' || op === '>=';
                     }
             }
         })(this.op);
@@ -71,10 +84,10 @@
 
 })(less.tree);
 var dynamicCompressor = {
-    parser:new less.Parser(),
-    parseLess:function (less) {
+    parseLess:function (con) {
         var res;
-        dynamicCompressor.parser.parse(less, function (e, root) {
+        //因为JAVA为多线程，每次必须保持对象内的内部属性，必须重新实例化less.Parser对象
+        new less.Parser().parse(con, function (e, root) {
             if (e) {
                 throw e;
             } else {

@@ -51,7 +51,7 @@ public class LessEngine {
 
     static {
         global.init(jsContextFactory);
-        global.defineProperty("window", global, ScriptableObject.PERMANENT);
+        global.defineProperty("window", global, ScriptableObject.DONTENUM);
 
         final URL lessLib = LessEngine.class.getResource("/externs/less.js");
         InputStreamReader lessLibReader = null;
@@ -74,11 +74,15 @@ public class LessEngine {
         jsContextFactory.call(new ContextAction() {
             @Override
             public Object run(Context cx) {
+                cx.setLanguageVersion(Context.VERSION_1_8);
+                cx.setOptimizationLevel(9);
+                logger.debug("load file /externs/less.js");
                 try {
                     cx.evaluateReader(global, finalLessLibReader, lessLib.getFile(), 1, null);
                 } catch (IOException e) {
                     logger.error("evaluateReader /externs/less.js error", e);
                 }
+                logger.debug("load file /externs/lessparser.js");
                 try {
                     cx.evaluateReader(global, finalLessParserReader, lessParser.getFile(), 1, null);
                 } catch (IOException e) {
@@ -89,10 +93,10 @@ public class LessEngine {
         });
     }
 
-    private static final Function parseFn = (Function) ((NativeObject) global.get("dynamicCompressor", global)).get("parseLess");
+    private static final NativeObject fnThisScopeObj = (NativeObject) global.get("dynamicCompressor", global);
+    private static final Function parseFn = (Function) fnThisScopeObj.get("parseLess");
 
     private static void parseLessException(Exception root) throws LessException {
-        logger.debug("Parsing LESS Exception", root);
         if (root instanceof JavaScriptException) {
             Scriptable value = (Scriptable) ((JavaScriptException) root).getValue();
             String type = ScriptableObject.getProperty(value, "type").toString() + " Error";
@@ -134,8 +138,10 @@ public class LessEngine {
     public static List<SourceCode> parseLess(List<SourceCode> codeList, List<String> conditions) throws LessException {
         final List<SourceCode> resultCodeList = new FastList<SourceCode>();
         StringBuilder conditionsBuilder = new StringBuilder();
-        for (String con : conditions) {
-            conditionsBuilder.append("@").append(con).append(":true;");
+        if (conditions != null) {
+            for (String con : conditions) {
+                conditionsBuilder.append("@").append(con).append(":true;");
+            }
         }
         for (final SourceCode sourceCode : codeList) {
             if (!sourceCode.getFileName().endsWith(".less") && !sourceCode.getFileName().endsWith(".mss")) {
@@ -147,7 +153,8 @@ public class LessEngine {
                 jsContextFactory.call(new ContextAction() {
                     @Override
                     public Object run(Context cx) {
-                        Object result = parseFn.call(cx, global, global, functionArgs);
+                        cx.setLanguageVersion(Context.VERSION_1_8);
+                        Object result = parseFn.call(cx, global, fnThisScopeObj, functionArgs);
                         resultCodeList.add(new SourceCode(sourceCode.getFileName(), Context.toString(result)));
                         return null;
                     }

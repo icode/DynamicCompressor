@@ -32,9 +32,8 @@
     </appender>
   
   <logger name="com.log4ic.compressor" level="TRACE"/>
-  <logger name="com.google.code.yanf4j" level="TRACE"/>
 
-  <root level="ERROR">
+  <root level="TRACE">
     <appender-ref ref="STDOUT" />
   </root>
 </configuration>
