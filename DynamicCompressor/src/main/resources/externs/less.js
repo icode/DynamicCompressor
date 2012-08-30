@@ -5,12 +5,9 @@
 // Copyright (c) 2009-2011, Alexis Sellier
 // Licensed under the Apache 2.0 License.
 //
-(function (window, undefined) {
-//
-// Stub out `require` in the browser
-//
+
     function require(arg) {
-        return window.less[arg.split('/')[1]];
+        return less[arg.split('/')[1]];
     };
 
 // amd.js
@@ -148,17 +145,6 @@
         else                                { less = window.less = {} }
         tree = less.tree = {};
         less.mode = 'rhino';
-    } else if (typeof(window) === 'undefined') {
-        // Node.js
-        less = exports,
-            tree = require('./tree');
-        less.mode = 'node';
-    } else {
-        // Browser
-        if (typeof(window.less) === 'undefined') { window.less = {} }
-        less = window.less,
-            tree = window.less.tree = {};
-        less.mode = 'browser';
     }
 //
 // less.js - parser
@@ -3095,4 +3081,3 @@
         };
 
     })(require('./tree'));
-})(window);

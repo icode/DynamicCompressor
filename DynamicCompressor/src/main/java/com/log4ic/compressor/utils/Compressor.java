@@ -300,71 +300,55 @@ public class Compressor {
         return fixUrlPath(code, fileUrl, type, null);
     }
 
-    public static String fix(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
-        return fix(code, fileUrl, type, null, request, response);
-    }
 
-    public static String fix(String code, String fileUrl, FileType type, String fileDomain, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
-        code = importCss(code, fileUrl, type, fileDomain, request, response);
-        if (request.getAttribute("@import") != null) {
-            return code;
-        }
-        return fixUrlPath(code, fileUrl, type, fileDomain);
-    }
-
-    public static String importCss(String code, String fileUrl, FileType type, String fileDomain, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
-        Object isImport = request.getAttribute("@import");
-        boolean importing = false;
-        if (isImport == null) {
-            request.setAttribute("@import", true);
-            importing = true;
-        }
-        StringBuilder codeBuffer = new StringBuilder();
-        try {
-            switch (type) {
-                case GSS:
-                case CSS:
-                case LESS:
-                case MSS:
-                    Pattern pattern = Pattern.compile("@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?", Pattern.CASE_INSENSITIVE);
-                    Matcher matcher = pattern.matcher(code);
-                    String[] codeFragments = pattern.split(code);
-                    fileUrl = fileUrl.substring(0, fileUrl.lastIndexOf("/") + 1);
-                    int i = 0;
-                    while (matcher.find()) {
-                        codeBuffer.append(codeFragments[i]);
-                        String cssPath;
-                        String cssFile = matcher.group(1);
-                        if (!HttpUtils.isHttpProtocol(cssFile) && !cssFile.startsWith("/")) {
-                            cssPath = fileUrl + cssFile;
-                        } else {
-                            cssPath = cssFile;
-                        }
-                        if (request.getAttribute(cssPath) == null) {
-                            logger.debug("导入[{}]文件", cssPath);
-                            request.setAttribute(cssPath, true);
-                            List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type, fileDomain);
-                            codeBuffer.append(sourceCodes.get(0).getFileContents());
-                        }
-                        i++;
+    public static List<SourceCode> importCss(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
+        List<SourceCode> sourceCodeList = Lists.newArrayList();
+        switch (type) {
+            case GSS:
+            case CSS:
+            case LESS:
+            case MSS:
+                Pattern pattern = Pattern.compile("@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?", Pattern.CASE_INSENSITIVE);
+                Matcher matcher = pattern.matcher(code);
+                String[] codeFragments = pattern.split(code);
+                int extendsSplitIndex = fileUrl.lastIndexOf(".");
+                String fileNoneExtendsPath = fileUrl.substring(0, extendsSplitIndex);
+                String fileExtends = "__part__" + fileUrl.substring(extendsSplitIndex);
+                String filePath = fileUrl.substring(0, fileUrl.lastIndexOf("/") + 1);
+                int i = 0;
+                while (matcher.find()) {
+                    if (StringUtils.isNotBlank(codeFragments[i])) {
+                        sourceCodeList.add(new SourceCode(fileNoneExtendsPath + i + fileExtends, codeFragments[i]));
                     }
-                    if (i == 0) {
-                        return code;
+                    String cssPath;
+                    String cssFile = matcher.group(1);
+                    if (!HttpUtils.isHttpProtocol(cssFile) && !cssFile.startsWith("/")) {
+                        cssPath = filePath + cssFile;
                     } else {
-                        if (codeFragments.length >= i + 1) {
-                            codeBuffer.append(codeFragments[i]);
+                        cssPath = cssFile;
+                    }
+                    if (request.getAttribute(cssPath) == null) {
+                        logger.debug("导入[{}]文件", cssPath);
+                        request.setAttribute(cssPath, true);
+                        List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type);
+                        sourceCodeList.addAll(sourceCodes);
+                    }
+                    i++;
+                }
+                if (i != 0) {
+                    if (codeFragments.length >= i + 1) {
+                        if (StringUtils.isNotBlank(codeFragments[i])) {
+                            sourceCodeList.add(new SourceCode(fileNoneExtendsPath + i + fileExtends, codeFragments[i]));
                         }
                     }
                     break;
-                default:
-                    return code;
-            }
-        } finally {
-            if (importing) {
-                request.removeAttribute("@import");
-            }
+                }
+            default:
+                if (StringUtils.isNotBlank(code)) {
+                    sourceCodeList.add(new SourceCode(fileUrl, code));
+                }
         }
-        return codeBuffer.toString();
+        return sourceCodeList;
     }
 
     /**
@@ -386,6 +370,7 @@ public class Compressor {
             case MSS:
                 logger.debug("修正文件内的URL相对指向...");
                 Pattern pattern = Pattern.compile("url\\(\\s*(?!['\"]?(?:data:|about:|#))([^)]+)\\)", Pattern.CASE_INSENSITIVE);
+
                 Matcher matcher = pattern.matcher(code);
 
                 String[] codeFragments = pattern.split(code);
@@ -513,12 +498,11 @@ public class Compressor {
      * @param request
      * @param response
      * @param type
-     * @param fileDomain
      * @return
      * @throws com.log4ic.compressor.exception.CompressionException
      *
      */
-    public static List<SourceCode> mergeCode(String[] fileUrlList, HttpServletRequest request, HttpServletResponse response, FileType type, String fileDomain) throws CompressionException {
+    public static List<SourceCode> mergeCode(String[] fileUrlList, HttpServletRequest request, HttpServletResponse response, FileType type) throws CompressionException {
         List<SourceCode> codeList = new FastList<SourceCode>();
         ContentResponseWrapper wrapperResponse = null;
         //获取参数的文件并合并
@@ -528,11 +512,11 @@ public class Compressor {
                 continue;
             }
             if (type.contains(url.substring(index + 1))) {
-                StringBuilder code = new StringBuilder();
+                List<SourceCode> sourceCodes;
                 try {
                     //如果是http/https 协议开头则视为跨域
                     if (HttpUtils.isHttpProtocol(url)) {
-                        code.append(Compressor.fix(HttpUtils.requestFile(url), url, type, request, response));
+                        sourceCodes = importCss(HttpUtils.requestFile(url), url, type, request, response);
                     } else {
                         //否则视为同域
                         if (wrapperResponse == null) {
@@ -541,9 +525,7 @@ public class Compressor {
                         request.getRequestDispatcher(url).include(request, wrapperResponse);
                         wrapperResponse.flushBuffer();
                         String fragment = wrapperResponse.getContent();
-                        fragment = Compressor.fix(fragment, url, type, fileDomain, request, response);
-                        code.append(fragment);
-                        code.append("\n");
+                        sourceCodes = importCss(fragment, url, type, request, response);
                         ((ContentResponseStream) wrapperResponse.getOutputStream()).reset();
                     }
                 } catch (ServletException e) {
@@ -551,8 +533,9 @@ public class Compressor {
                 } catch (IOException e) {
                     throw new CompressionException(e);
                 }
-                SourceCode sourceCode = new SourceCode(url, code.toString());
-                codeList.add(sourceCode);
+                if (sourceCodes != null) {
+                    codeList.addAll(sourceCodes);
+                }
             }
         }
 
@@ -831,13 +814,23 @@ public class Compressor {
                     }
                 }
             }
-            String code = null;
+            String code;
             //再次验证cache，如果是等待中的线程则不会再压缩
             if (cache == null || cache.isExpired()) {
                 //获取参数的文件并合并
-                List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type, fileDomain);
+                List<SourceCode> codeList = mergeCode(queryString.split("&"), request, response, type);
+                List<SourceCode> sourceCodeList = Lists.newArrayList();
+                //修正css里面的路径
+                for (SourceCode source : codeList) {
+                    SourceCode s = new SourceCode(source.getFileName(), fixUrlPath(source.getFileContents(),
+                            source.getFileName(),
+                            type,
+                            fileDomain
+                    ));
+                    sourceCodeList.add(s);
+                }
                 //压缩
-                code = HttpUtils.getBooleanParam(request, "nocompress") ? mergeCode(codeList, request, type) : compressCode(codeList, request, type);
+                code = HttpUtils.getBooleanParam(request, "nocompress") ? mergeCode(sourceCodeList, request, type) : compressCode(sourceCodeList, request, type);
                 if (cacheManager != null) {
                     final String finalCode = code;
                     new Thread(new Runnable() {

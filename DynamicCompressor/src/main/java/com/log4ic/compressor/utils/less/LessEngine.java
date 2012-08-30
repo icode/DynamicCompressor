@@ -51,7 +51,6 @@ public class LessEngine {
 
     static {
         global.init(jsContextFactory);
-        global.defineProperty("window", global, ScriptableObject.DONTENUM);
 
         final URL lessLib = LessEngine.class.getResource("/externs/less.js");
         InputStreamReader lessLibReader = null;
