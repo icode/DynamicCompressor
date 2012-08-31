@@ -380,7 +380,7 @@ public class Compressor {
                         List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type);
                         for (SourceCode s : sourceCodes) {
                             FileType t = getFileType(s.getFileName());
-                            if (fileType.contains(t)) {
+                            if (fileType.equals(t)) {
                                 codeBuilder.append(s.getFileContents());
                             } else {
                                 codeBuilder.append(mergeCode(Lists.<SourceCode>newArrayList(s), request, t));
@@ -871,7 +871,7 @@ public class Compressor {
             builder.append(parseGss(codeList, con));
         }
 
-        if (type == FileType.JS) {
+        if (type == FileType.JS || type == FileType.CSS) {
             for (SourceCode code : codeList) {
                 builder.append(code.getFileContents());
             }
