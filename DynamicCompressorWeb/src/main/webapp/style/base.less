@@ -1,0 +1,10 @@
+@nice-blue: #5B83AD;
+@light-blue: @nice-blue + #111;
+
+.mixin(){
+    color: @light-blue;
+}
+
+.mixin()when (@BROWSER_WEBKIT) {
+    color: @nice-blue;
+}

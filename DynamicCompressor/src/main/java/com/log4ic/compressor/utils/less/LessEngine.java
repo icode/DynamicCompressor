@@ -143,7 +143,7 @@ public class LessEngine {
             }
         }
         for (final SourceCode sourceCode : codeList) {
-            if (!sourceCode.getFileName().endsWith(".less") && !sourceCode.getFileName().endsWith(".mss")) {
+            if (!sourceCode.getFileName().toLowerCase().endsWith(".less")) {
                 resultCodeList.add(new SourceCode(sourceCode.getFileName(), sourceCode.getFileContents()));
                 continue;
             }

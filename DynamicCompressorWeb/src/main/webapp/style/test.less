@@ -1,17 +1,8 @@
 /*@import "style.css";*/
-
-@nice-blue: #5B83AD;
-@light-blue: @nice-blue + #111;
+@import "base.less";
 
 #header {
     .mixin
 }
 
-.mixin(){
-    color: @light-blue;
-}
-
-.mixin()when (@BROWSER_WEBKIT) {
-    color: @nice-blue;
-}
-
+@import "style.gss";

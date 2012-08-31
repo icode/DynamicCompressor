@@ -112,7 +112,7 @@ public class Compressor {
      * @return
      */
     public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException, LessException {
-        return compressCSS(LessEngine.parseLess(codeList, conditions), format, conditions);
+        return compressGss(LessEngine.parseLess(codeList, conditions), format, conditions);
     }
 
 
@@ -219,6 +219,10 @@ public class Compressor {
     //private static final DefaultGssFunctionMapProvider gssFunctionMapProvider = new GssFunctionMapProvider();
 
 
+    public static String compressGss(List<SourceCode> codeList, JobDescription.OutputFormat format) throws GssParserException {
+        return compressGss(codeList, format, null);
+    }
+
     /**
      * 压缩css
      *
@@ -228,7 +232,11 @@ public class Compressor {
      * @return
      * @throws GssParserException
      */
-    public static String compressCSS(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
+    public static String compressGss(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
+        return compressGss(buildJobDesBuilder(codeList, format, conditions));
+    }
+
+    private static JobDescriptionBuilder buildJobDesBuilder(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) {
         JobDescriptionBuilder builder = new JobDescriptionBuilder();
         builder.setAllowWebkitKeyframes(true);
         builder.setAllowKeyframes(true);
@@ -240,8 +248,9 @@ public class Compressor {
         for (SourceCode code : codeList) {
             builder.addInput(code);
         }
-
-        builder.setOutputFormat(format);
+        if (format != null) {
+            builder.setOutputFormat(format);
+        }
         //设置内置方法
         //builder.setGssFunctionMapProvider(gssFunctionMapProvider);
         //设置浏览器断言
@@ -250,9 +259,35 @@ public class Compressor {
                 builder.addTrueConditionName(con);
             }
         }
-        return compressCSS(builder);
+        return builder;
     }
 
+    public static String parseGss(List<SourceCode> codeList, List<String> conditions) throws GssParserException {
+        List<SourceCode> codes = Lists.newArrayList();
+        for (SourceCode s : codeList) {
+            if (s.getFileName().toLowerCase().endsWith(".gss")) {
+                codes.add(s);
+            }
+        }
+        return parseGss(buildJobDesBuilder(codes, null, conditions).getJobDescription());
+    }
+
+
+    public static String parseGss(JobDescription job) throws GssParserException {
+        logger.debug("解析GSS...");
+        try {
+            GssParser parser = new GssParser(job.inputs);
+            CssTree cssTree = parser.parse();
+            CompilerErrorManager errorManager = new CompilerErrorManager();
+            PassRunner passRunner = new ExtendedPassRunner(job, errorManager);
+            passRunner.runPasses(cssTree);
+            PrettyPrinter prettyPrinterPass = new PrettyPrinter(cssTree.getVisitController());
+            prettyPrinterPass.runPass();
+            return prettyPrinterPass.getPrettyPrintedString();
+        } finally {
+            logger.debug("解析GSS完毕...");
+        }
+    }
 
     /**
      * 压缩css
@@ -261,7 +296,7 @@ public class Compressor {
      * @return
      * @throws GssParserException
      */
-    public static String compressCSS(JobDescriptionBuilder builder) throws GssParserException {
+    public static String compressGss(JobDescriptionBuilder builder) throws GssParserException {
         logger.debug("压缩CSS...");
         try {
             JobDescription job = builder.getJobDescription();
@@ -303,8 +338,8 @@ public class Compressor {
     private static final String importPatternStr = "@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?";
     private static final Pattern importPattern = Pattern.compile(importPatternStr, Pattern.CASE_INSENSITIVE);
 
-    public static List<SourceCode> importCss(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException {
-        List<SourceCode> sourceCodeList = Lists.newArrayList();
+    public static String importCss(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException, LessException, GssParserException {
+        StringBuilder codeBuilder = new StringBuilder();
         switch (type) {
             case GSS:
             case CSS:
@@ -312,23 +347,11 @@ public class Compressor {
             case MSS:
                 Matcher matcher = importPattern.matcher(code);
                 String[] codeFragments = importPattern.split(code);
-                int extendsSplitIndex = fileUrl.lastIndexOf(".");
-                String fileNoneExtendsPath = fileUrl.substring(0, extendsSplitIndex);
-                String fileExtends = "__part__" + fileUrl.substring(extendsSplitIndex);
                 String filePath = fileUrl.substring(0, fileUrl.lastIndexOf("/") + 1);
+                FileType fileType = getFileType(fileUrl);
                 int i = 0;
                 while (matcher.find()) {
-                    if (StringUtils.isNotBlank(codeFragments[i])) {
-                        if ((codeFragments[i].lastIndexOf("/*") > codeFragments[i].lastIndexOf("*/")
-                                || codeFragments[i].lastIndexOf("//") > codeFragments[i].lastIndexOf("\n"))
-                                && codeFragments.length > i + 1) {
-                            codeFragments[i + 1] = codeFragments[i] + codeFragments[i + 1];
-                            i++;
-                            continue;
-                        } else {
-                            sourceCodeList.add(new SourceCode(fileNoneExtendsPath + i + fileExtends, codeFragments[i]));
-                        }
-                    }
+
                     String cssPath;
                     String cssFile = matcher.group(1);
                     if (!HttpUtils.isHttpProtocol(cssFile) && !cssFile.startsWith("/")) {
@@ -336,28 +359,46 @@ public class Compressor {
                     } else {
                         cssPath = cssFile;
                     }
+
+                    if (StringUtils.isNotBlank(codeFragments[i])) {
+                        if (codeFragments[i].lastIndexOf("/*") > codeFragments[i].lastIndexOf("*/")
+                                || codeFragments[i].lastIndexOf("//") > codeFragments[i].lastIndexOf("\n")) {
+                            if (codeFragments.length > i + 1) {
+                                codeFragments[i + 1] = codeFragments[i] + codeFragments[i + 1];
+                                codeFragments[i] = null;
+                                i++;
+                            }
+                            continue;
+                        } else {
+                            codeBuilder.append(codeFragments[i]);
+                        }
+                    }
+
                     if (request.getAttribute(cssPath) == null) {
                         logger.debug("导入[{}]文件", cssPath);
                         request.setAttribute(cssPath, true);
                         List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type);
-                        sourceCodeList.addAll(sourceCodes);
+                        for (SourceCode s : sourceCodes) {
+                            FileType t = getFileType(s.getFileName());
+                            if (fileType.contains(t)) {
+                                codeBuilder.append(s.getFileContents());
+                            } else {
+                                codeBuilder.append(mergeCode(Lists.<SourceCode>newArrayList(s), request, t));
+                            }
+                        }
                     }
                     i++;
                 }
                 if (i != 0) {
-                    if (codeFragments.length >= i + 1) {
-                        if (StringUtils.isNotBlank(codeFragments[i])) {
-                            sourceCodeList.add(new SourceCode(fileNoneExtendsPath + i + fileExtends, codeFragments[i]));
-                        }
+                    if (codeFragments.length > i && StringUtils.isNotBlank(codeFragments[i])) {
+                        codeBuilder.append(codeFragments[i]);
                     }
                     break;
                 }
             default:
-                if (StringUtils.isNotBlank(code)) {
-                    sourceCodeList.add(new SourceCode(fileUrl, code));
-                }
+                return code;
         }
-        return sourceCodeList;
+        return codeBuilder.toString();
     }
 
     /**
@@ -447,7 +488,7 @@ public class Compressor {
                 if (i == 0) {
                     return code;
                 } else {
-                    if (codeFragments.length >= i + 1) {
+                    if (codeFragments.length > i && StringUtils.isNotBlank(codeFragments[i])) {
                         codeBuffer.append(codeFragments[i]);
                     }
                 }
@@ -467,37 +508,72 @@ public class Compressor {
 
     public enum FileType {
         JS {
+            @Override
+            boolean contains(FileType type) {
+                return equals(type);
+            }
+
+            @Override
             public boolean contains(String type) {
-                return JS.name().equals(type.toUpperCase());
+                return name().equals(type.toUpperCase());
             }
         },
         CSS {
+            @Override
+            boolean contains(FileType type) {
+                return equals(type);
+            }
+
+            @Override
             public boolean contains(String type) {
-                return CSS.name().equals(type.toUpperCase());
+                return name().equals(type.toUpperCase());
             }
         },
         GSS {
+            @Override
+            boolean contains(FileType type) {
+                return equals(type) || CSS.contains(type);
+            }
+
+            @Override
             public boolean contains(String type) {
-                return GSS.name().equals(type.toUpperCase()) ||
-                        CSS.name().equals(type.toUpperCase());
+                return CSS.contains(type) ||
+                        name().equals(type.toUpperCase());
             }
         },
         LESS {
+            @Override
+            boolean contains(FileType type) {
+                return equals(type) || CSS.contains(type);
+            }
+
+            @Override
             public boolean contains(String type) {
-                return CSS.name().equals(type.toUpperCase()) ||
-                        LESS.name().equals(type.toUpperCase());
+                return CSS.contains(type) ||
+                        name().equals(type.toUpperCase());
             }
         },
         MSS {
+            @Override
+            boolean contains(FileType type) {
+                return equals(type)
+                        || CSS.contains(type)
+                        || GSS.contains(type)
+                        || LESS.contains(type);
+            }
+
+            @Override
             public boolean contains(String type) {
-                return MSS.name().equals(type.toUpperCase()) ||
-                        GSS.name().equals(type.toUpperCase()) ||
-                        LESS.name().equals(type.toUpperCase()) ||
-                        CSS.name().equals(type.toUpperCase());
+                return name().equals(type.toUpperCase())
+                        || CSS.contains(type)
+                        || GSS.contains(type)
+                        || LESS.contains(type);
             }
         };
 
         abstract boolean contains(String type);
+
+        abstract boolean contains(FileType type);
     }
 
     /**
@@ -521,11 +597,11 @@ public class Compressor {
                 continue;
             }
             if (type.contains(url.substring(index + 1))) {
-                List<SourceCode> sourceCodes;
+                String fragment;
                 try {
                     //如果是http/https 协议开头则视为跨域
                     if (HttpUtils.isHttpProtocol(url)) {
-                        sourceCodes = importCss(HttpUtils.requestFile(url), url, type, request, response);
+                        fragment = importCss(HttpUtils.requestFile(url), url, type, request, response);
                     } else {
                         //否则视为同域
                         if (wrapperResponse == null) {
@@ -533,17 +609,21 @@ public class Compressor {
                         }
                         request.getRequestDispatcher(url).include(request, wrapperResponse);
                         wrapperResponse.flushBuffer();
-                        String fragment = wrapperResponse.getContent();
-                        sourceCodes = importCss(fragment, url, type, request, response);
+                        fragment = wrapperResponse.getContent();
+                        fragment = importCss(fragment, url, type, request, response);
                         ((ContentResponseStream) wrapperResponse.getOutputStream()).reset();
                     }
                 } catch (ServletException e) {
                     throw new CompressionException("ServletException", e);
                 } catch (IOException e) {
                     throw new CompressionException(e);
+                } catch (GssParserException e) {
+                    throw new CompressionException(e);
+                } catch (LessException e) {
+                    throw new CompressionException(e);
                 }
-                if (sourceCodes != null) {
-                    codeList.addAll(sourceCodes);
+                if (StringUtils.isNotBlank(fragment)) {
+                    codeList.add(new SourceCode(url, fragment));
                 }
             }
         }
@@ -604,9 +684,11 @@ public class Compressor {
                     code = Compressor.compressJS(sourceFiles, level, isDebug);
                     break;
                 case CSS:
-                    code = Compressor.compressCSS(fileSourceList, getGssFormat(isDebug, request), Lists.<String>newArrayList());
+                    code = Compressor.compressGss(fileSourceList, getGssFormat(isDebug, request));
                     break;
                 case GSS:
+                    code = Compressor.compressGss(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
+                    break;
                 case LESS:
                 case MSS:
                     //压缩代码并设置浏览器断言
@@ -753,8 +835,12 @@ public class Compressor {
     }
 
     private static FileType getFileType(HttpServletRequest request) throws CompressionException {
+        return getFileType(HttpUtils.getRequestUri(request));
+    }
+
+    private static FileType getFileType(String uri) throws CompressionException {
         //分割请求地址
-        String[] uris = HttpUtils.getRequestUri(request).split("\\.");
+        String[] uris = uri.split("\\.");
         if (uris.length == 0) {
             throw new UnsupportedFileTypeException();
         }
@@ -768,14 +854,23 @@ public class Compressor {
         return type;
     }
 
-    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request, FileType type) throws LessException {
+    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request, FileType type) throws LessException, GssParserException {
         StringBuilder builder = new StringBuilder();
+        List<String> con = buildTrueConditions(request);
+
         if (type == FileType.LESS || type == FileType.MSS) {
-            codeList = LessEngine.parseLess(codeList, buildTrueConditions(request));
+            codeList = LessEngine.parseLess(codeList, con);
+            for (SourceCode code : codeList) {
+                if (code.getFileName().toLowerCase().endsWith(".less")) {
+                    builder.append(code.getFileContents());
+                }
+            }
         }
-        for (SourceCode code : codeList) {
-            builder.append(code.getFileContents());
+
+        if (type == FileType.GSS || type == FileType.MSS) {
+            builder.append(parseGss(codeList, con));
         }
+
         return builder.toString();
     }
 
