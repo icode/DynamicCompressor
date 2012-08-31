@@ -871,6 +871,12 @@ public class Compressor {
             builder.append(parseGss(codeList, con));
         }
 
+        if (type == FileType.JS) {
+            for (SourceCode code : codeList) {
+                builder.append(code.getFileContents());
+            }
+        }
+
         return builder.toString();
     }
 
