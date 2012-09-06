@@ -233,7 +233,7 @@ public class Compressor {
      * @throws GssParserException
      */
     public static String compressGss(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException {
-        return compressGss(buildJobDesBuilder(codeList, format, conditions));
+        return compressGss(buildJobDesBuilder(codeList, format, conditions).getJobDescription());
     }
 
     private static JobDescriptionBuilder buildJobDesBuilder(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) {
@@ -269,7 +269,11 @@ public class Compressor {
                 codes.add(s);
             }
         }
-        return parseGss(buildJobDesBuilder(codes, null, conditions).getJobDescription());
+        JobDescriptionBuilder builder = buildJobDesBuilder(codes, null, conditions);
+        builder.setProcessDependencies(false);
+        builder.setSimplifyCss(false);
+        builder.setEliminateDeadStyles(false);
+        return parseGss(builder.getJobDescription());
     }
 
 
@@ -292,14 +296,13 @@ public class Compressor {
     /**
      * 压缩css
      *
-     * @param builder
+     * @param job
      * @return
      * @throws GssParserException
      */
-    public static String compressGss(JobDescriptionBuilder builder) throws GssParserException {
+    public static String compressGss(JobDescription job) throws GssParserException {
         logger.debug("压缩CSS...");
         try {
-            JobDescription job = builder.getJobDescription();
             GssParser parser = new GssParser(job.inputs);
             CssTree cssTree = parser.parse();
             if (job.outputFormat != JobDescription.OutputFormat.DEBUG) {
