@@ -865,7 +865,7 @@ public class Compressor {
             codeList = LessEngine.parseLess(codeList, con);
             for (SourceCode code : codeList) {
                 if (code.getFileName().toLowerCase().endsWith(".less")) {
-                    builder.append(code.getFileContents());
+                    builder.append(code.getFileContents()).append("\n");
                 }
             }
         }
@@ -876,7 +876,7 @@ public class Compressor {
 
         if (type == FileType.JS || type == FileType.CSS) {
             for (SourceCode code : codeList) {
-                builder.append(code.getFileContents());
+                builder.append(code.getFileContents()).append("\n");
             }
         }
 
