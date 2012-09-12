@@ -194,6 +194,11 @@
             <version>12.0</version>
         </dependency>
         <dependency>
+            <groupId>com.googlecode.htmlcompressor</groupId>
+            <artifactId>htmlcompressor</artifactId>
+            <version>1.5.3</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.closure-stylesheets</groupId>
             <artifactId>closure-stylesheets</artifactId>
             <version>20120830</version>

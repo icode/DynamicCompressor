@@ -194,6 +194,17 @@ public class FileUtils {
         return new String(outStream.toByteArray(), encoding);
     }
 
+    public static String InputStream2String(InputStream in) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        StringBuffer buffer = new StringBuffer();
+        String line = br.readLine();
+        while (line != null) {
+            buffer.append(line).append("\n");
+            line = br.readLine();
+        }
+        return buffer.toString();
+    }
+
     public static String appendSeparator(String path) {
         return path + (path.endsWith(File.separator) ? "" : File.separator);
     }

@@ -216,8 +216,13 @@ public class Compressor {
         FileUtils.writeFile(code, file.getPath());
     }
 
-    //private static final DefaultGssFunctionMapProvider gssFunctionMapProvider = new GssFunctionMapProvider();
+    public static String compressGss(SourceCode sourceCode) throws GssParserException {
+        return compressGss(Lists.<SourceCode>newArrayList(sourceCode), null, null);
+    }
 
+    public static String compressGss(List<SourceCode> codeList) throws GssParserException {
+        return compressGss(codeList, null, null);
+    }
 
     public static String compressGss(List<SourceCode> codeList, JobDescription.OutputFormat format) throws GssParserException {
         return compressGss(codeList, format, null);
