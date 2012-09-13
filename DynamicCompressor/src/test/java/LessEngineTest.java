@@ -24,6 +24,7 @@
 
 import com.google.common.collect.Lists;
 import com.google.common.css.SourceCode;
+import com.log4ic.compressor.exception.CompressionException;
 import com.log4ic.compressor.utils.FileUtils;
 import com.log4ic.compressor.utils.less.LessEngine;
 import com.log4ic.compressor.utils.less.exception.LessException;
@@ -67,6 +68,8 @@ public class LessEngineTest {
                 } catch (LessException e) {
                     if (index == 0)
                         logger.debug(index + " thread parse error.", e);
+                } catch (CompressionException e) {
+                    e.printStackTrace();
                 } finally {
                     latch.countDown();
                 }

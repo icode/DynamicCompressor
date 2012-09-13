@@ -46,8 +46,10 @@ import com.log4ic.compressor.servlet.http.stream.ContentResponseStream;
 import com.log4ic.compressor.utils.gss.passes.ExtendedPassRunner;
 import com.log4ic.compressor.utils.less.LessEngine;
 import com.log4ic.compressor.utils.less.exception.LessException;
+import com.log4ic.compressor.utils.template.JavascriptTemplateEngine;
 import javolution.util.FastList;
 import javolution.util.FastMap;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +61,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
@@ -111,7 +114,7 @@ public class Compressor {
      * @param conditions
      * @return
      */
-    public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException, LessException {
+    public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException, LessException, CompressionException {
         return compressGss(LessEngine.parseLess(codeList, conditions), format, conditions);
     }
 
@@ -267,10 +270,10 @@ public class Compressor {
         return builder;
     }
 
-    public static String parseGss(List<SourceCode> codeList, List<String> conditions) throws GssParserException {
+    public static String parseGss(List<SourceCode> codeList, List<String> conditions) throws GssParserException, CompressionException {
         List<SourceCode> codes = Lists.newArrayList();
         for (SourceCode s : codeList) {
-            if (s.getFileName().toLowerCase().endsWith(".gss")) {
+            if (getFileType(s.getFileName()) == FileType.GSS) {
                 codes.add(s);
             }
         }
@@ -346,7 +349,7 @@ public class Compressor {
     private static final String importPatternStr = "@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?";
     private static final Pattern importPattern = Pattern.compile(importPatternStr, Pattern.CASE_INSENSITIVE);
 
-    public static String importCss(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException, LessException, GssParserException {
+    public static String importCode(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException, LessException, GssParserException {
         StringBuilder codeBuilder = new StringBuilder();
         switch (type) {
             case GSS:
@@ -433,7 +436,7 @@ public class Compressor {
 
                 String[] codeFragments = pattern.split(code);
 
-                fileUrl = fileUrl.substring(0, fileUrl.lastIndexOf("/"));
+                fileUrl = fileUrl.substring(0, fileUrl.lastIndexOf("/") + 1);
 
                 int i = 0;
                 while (matcher.find()) {
@@ -441,40 +444,9 @@ public class Compressor {
                     codeBuffer.append("url(");
                     MatchResult result = matcher.toMatchResult();
                     String url = result.group(1).replaceAll("'|\"", "");
-                    String cssUrl = fileUrl;
                     //绝对路径不处理
                     if (!HttpUtils.isHttpProtocol(url) && !url.startsWith("/")) {
-                        StringBuilder pathBuffer = new StringBuilder();
-                        if (url.startsWith("..")) {//如果访问上级目录
-                            String[] imgUrl = url.split("/");
-                            for (int j = 0; j < imgUrl.length; j++) {
-                                String imgUrlFragment = imgUrl[j];
-                                if (imgUrlFragment.equals("..")) {//上级目录
-                                    int index = cssUrl.lastIndexOf("/");
-                                    if (index > 0) {
-                                        cssUrl = cssUrl.substring(0, index + 1);
-                                    } else {
-                                        cssUrl = "/";
-                                    }
-
-                                    imgUrl[j] = null;
-                                } else {
-                                    for (String u : imgUrl) {
-                                        if (u != null) {
-                                            pathBuffer.append("/");
-                                            pathBuffer.append(u);
-                                        }
-                                    }
-                                    pathBuffer.deleteCharAt(0);
-                                    break;
-                                }
-                            }
-                        } else {
-                            pathBuffer.append("/");
-                            pathBuffer.append(url);
-                        }
-                        pathBuffer.insert(0, cssUrl);
-                        url = pathBuffer.toString();
+                        url = URI.create(fileUrl + url).normalize().toASCIIString();//转成URL
                     }
 
                     //如果设置了静态文件路径，并且url不是http开头（视为其他服务加载的文件)，则将文件服务器域名指向设置的域名
@@ -518,12 +490,31 @@ public class Compressor {
         JS {
             @Override
             boolean contains(FileType type) {
-                return equals(type);
+                return equals(type) || TPL.contains(type);
             }
 
             @Override
             public boolean contains(String type) {
-                return name().equals(type.toUpperCase());
+                return name().equals(type.toUpperCase()) || TPL.contains(type);
+            }
+        },
+        TPL {
+            @Override
+            boolean contains(FileType type) {
+                return equals(type) || ArrayUtils.indexOf(FileType.values(), type) == -1;
+            }
+
+            @Override
+            public boolean contains(String type) {
+                boolean is = name().equals(type.toUpperCase());
+                if (!is) {
+                    try {
+                        FileType.valueOf(type.toUpperCase());
+                    } catch (Exception e) {
+                        is = true;
+                    }
+                }
+                return is;
             }
         },
         CSS {
@@ -609,7 +600,7 @@ public class Compressor {
                 try {
                     //如果是http/https 协议开头则视为跨域
                     if (HttpUtils.isHttpProtocol(url)) {
-                        fragment = importCss(HttpUtils.requestFile(url), url, type, request, response);
+                        fragment = importCode(HttpUtils.requestFile(url), url, type, request, response);
                     } else {
                         //否则视为同域
                         if (wrapperResponse == null) {
@@ -618,7 +609,7 @@ public class Compressor {
                         request.getRequestDispatcher(url).include(request, wrapperResponse);
                         wrapperResponse.flushBuffer();
                         fragment = wrapperResponse.getContent();
-                        fragment = importCss(fragment, url, type, request, response);
+                        fragment = importCode(fragment, url, type, request, response);
                         ((ContentResponseStream) wrapperResponse.getOutputStream()).reset();
                     }
                 } catch (ServletException e) {
@@ -687,6 +678,10 @@ public class Compressor {
                     JSSourceFile[] sourceFiles = new JSSourceFile[fileSourceList.size()];
                     for (int i = 0; i < fileSourceList.size(); i++) {
                         SourceCode source = fileSourceList.get(i);
+                        if (FileType.TPL.contains(getFileTypeString(source.getFileName()))) {
+                            String tpl = JavascriptTemplateEngine.compress(URI.create(source.getFileName()), source.getFileContents());
+                            source = new SourceCode(source.getFileName(), tpl);
+                        }
                         sourceFiles[i] = JSSourceFile.fromCode(source.getFileName(), source.getFileContents());
                     }
                     code = Compressor.compressJS(sourceFiles, level, isDebug);
@@ -800,7 +795,12 @@ public class Compressor {
                     p[0] = root + (root.endsWith("/") || p[0].startsWith("/") ? "" : "/") + p[0];
                 }
                 if (!noRepeatParams.contains(p[0])) {
-                    noRepeatParams.add(p[0]);
+                    if (p.length > 1) {
+                        StringBuffer buffer = new StringBuffer();
+                        noRepeatParams.add(buffer.append(p[0]).append("=").append(p[1]).toString());
+                    }else{
+                        noRepeatParams.add(p[0]);
+                    }
                 }
             }
         }
@@ -842,11 +842,11 @@ public class Compressor {
         }
     }
 
-    private static FileType getFileType(HttpServletRequest request) throws CompressionException {
+    public static FileType getFileType(HttpServletRequest request) throws CompressionException {
         return getFileType(HttpUtils.getRequestUri(request));
     }
 
-    private static FileType getFileType(String uri) throws CompressionException {
+    public static String getFileTypeString(String uri) throws CompressionException {
         //分割请求地址
         String[] uris = uri.split("\\.");
         if (uris.length == 0) {
@@ -854,22 +854,30 @@ public class Compressor {
         }
         FileType type;
         //根据请求后缀获取压缩内容类型
+        String typeStr = uris[uris.length - 1].toUpperCase();
+        int paramIndexTag = typeStr.indexOf("?");
+        return typeStr.substring(0, paramIndexTag == -1 ? typeStr.length() : paramIndexTag);
+    }
+
+    public static FileType getFileType(String uri) throws CompressionException {
+        FileType type;
+        //根据请求后缀获取压缩内容类型
         try {
-            type = FileType.valueOf(uris[uris.length - 1].toUpperCase());
+            type = FileType.valueOf(getFileTypeString(uri));
         } catch (Exception e) {
             throw new UnsupportedFileTypeException();
         }
         return type;
     }
 
-    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request, FileType type) throws LessException, GssParserException {
+    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request, FileType type) throws LessException, GssParserException, CompressionException {
         StringBuilder builder = new StringBuilder();
         List<String> con = buildTrueConditions(request);
 
         if (type == FileType.LESS || type == FileType.MSS) {
             codeList = LessEngine.parseLess(codeList, con);
             for (SourceCode code : codeList) {
-                if (code.getFileName().toLowerCase().endsWith(".less")) {
+                if (getFileType(code.getFileName()) == FileType.LESS) {
                     builder.append(code.getFileContents()).append("\n");
                 }
             }
@@ -881,7 +889,12 @@ public class Compressor {
 
         if (type == FileType.JS || type == FileType.CSS) {
             for (SourceCode code : codeList) {
-                builder.append(code.getFileContents()).append("\n");
+                if (FileType.TPL.contains(getFileTypeString(code.getFileName()))) {
+                    String tpl = JavascriptTemplateEngine.parse(URI.create(code.getFileName()), code.getFileContents());
+                    builder.append(tpl).append("\n");
+                } else {
+                    builder.append(code.getFileContents()).append("\n");
+                }
             }
         }
 

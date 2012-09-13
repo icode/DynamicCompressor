@@ -30,6 +30,11 @@ import com.google.javascript.jscomp.CompilationLevel;
 import com.googlecode.htmlcompressor.compressor.ClosureJavaScriptCompressor;
 import com.googlecode.htmlcompressor.compressor.Compressor;
 import com.googlecode.htmlcompressor.compressor.HtmlCompressor;
+import com.log4ic.compressor.utils.HttpUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import java.net.URI;
+import java.util.Map;
 
 /**
  * @author 张立鑫 IntelligentCode
@@ -37,11 +42,49 @@ import com.googlecode.htmlcompressor.compressor.HtmlCompressor;
  */
 public class JavascriptTemplateEngine {
     public enum Mode {
-        STRING,
         COMMON,
         AMD
     }
 
+    protected static interface RunIt {
+        public String run(String name, String source, Mode mode);
+    }
+
+    protected static String run(URI uri, String source, RunIt runIt) {
+        Map<String, String> params = HttpUtils.getParameterMap(uri);
+        String name = params.get("name");
+        String mode = params.get("mode");
+        if (StringUtils.isBlank(name)) {
+            name = uri.getPath();
+            int lastI = name.lastIndexOf(".");
+            name = name.substring(name.lastIndexOf("/") + 1, lastI);
+        }
+        Mode m = null;
+        if (StringUtils.isNotBlank(mode)) {
+            try {
+                m = Mode.valueOf(mode.toUpperCase());
+            } catch (Exception e) {
+                //fuck ide
+            }
+        }
+        if (m == null) {
+            m = Mode.COMMON;
+        }
+        return runIt.run(
+                name,
+                source,
+                m
+        );
+    }
+
+    public static String parse(URI uri, String source) {
+        return run(uri, source, new RunIt() {
+            @Override
+            public String run(String name, String source, Mode mode) {
+                return parse(name, source, mode);
+            }
+        });
+    }
 
     public static String parse(String name, String source, Mode mode) {
         StringBuffer buffer = new StringBuffer();
@@ -50,29 +93,34 @@ public class JavascriptTemplateEngine {
                 buffer.append("define('").append(name).append("',function(){return ");
                 break;
             case COMMON:
-                buffer.append(name).append("=");
+                buffer.append("window['").append(name).append("']=");
                 break;
-            case STRING:
             default:
         }
 
-        if (mode != Mode.STRING) {
-            source = source.replaceAll("'", "\\\\'");
-            buffer.append(source.replaceAll("(?m)^(\\s*)(.*?)\\s*$", "$1'$2'+"));
-            buffer.delete(buffer.length() - 1, buffer.length());
-        } else {
-            buffer.append(source);
-        }
+        source = source.replaceAll("'", "\\\\'");
+        buffer.append(source.replaceAll("(?m)^(\\s*)(.*?)\\s*$", "$1'$2'+"));
+        buffer.delete(buffer.length() - 1, buffer.length());
+
 
         switch (mode) {
             case AMD:
                 buffer.append("})");
                 break;
             case COMMON:
-            case STRING:
             default:
+                buffer.append(";");
         }
         return buffer.toString();
+    }
+
+    public static String compress(URI uri, String source) {
+        return run(uri, source, new RunIt() {
+            @Override
+            public String run(String name, String source, Mode mode) {
+                return compress(name, source, mode);
+            }
+        });
     }
 
     public static String compress(String name, String source, Mode mode) {

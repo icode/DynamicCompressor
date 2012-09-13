@@ -1826,10 +1826,10 @@ var requirejs, require, define;
     /**添加对动态压缩的支持**/
     var timer, currentModuleName, currentUrl, encodeUrl = function (url, compress, browserCondition) {
         if (currentUrl) {
-            currentUrl += '&' + url;
+            currentUrl += '&' + encodeURIComponent(url);
         } else {
             currentUrl = '/compress.js?' + (compress === true ? '' : 'nocompress&') +
-                (browserCondition === true ? 'condition&' : '') + url;
+                (browserCondition === true ? 'condition&' : '') + encodeURIComponent(url);
         }
         return currentUrl;
     }, encodeModuleName = function (moduleName) {
@@ -1869,14 +1869,14 @@ var requirejs, require, define;
             var _url = '';
             if(compressorCfg.compress !== true) {
                 _url = '/compress.js?nocompress&';
-                url = _url + url;
+                url = _url + encodeURIComponent(url);
             }
 
             if(compressorCfg.browserCondition === true) {
                 if(_url){
                     url += '&condition';
                 } else {
-                    url = '/compress.js?condition&' + url;
+                    url = '/compress.js?condition&' + encodeURIComponent(url);
                 }
             }
         }

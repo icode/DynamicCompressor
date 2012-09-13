@@ -26,6 +26,8 @@ package com.log4ic.compressor.utils.less;
 
 import com.google.common.css.SourceCode;
 import com.google.common.css.compiler.ast.GssParserException;
+import com.log4ic.compressor.exception.CompressionException;
+import com.log4ic.compressor.utils.Compressor;
 import com.log4ic.compressor.utils.less.exception.LessException;
 import javolution.util.FastList;
 import org.mozilla.javascript.*;
@@ -134,7 +136,7 @@ public class LessEngine {
      * @return
      * @throws GssParserException
      */
-    public static List<SourceCode> parseLess(List<SourceCode> codeList, List<String> conditions) throws LessException {
+    public static List<SourceCode> parseLess(List<SourceCode> codeList, List<String> conditions) throws LessException, CompressionException {
         final List<SourceCode> resultCodeList = new FastList<SourceCode>();
         StringBuilder conditionsBuilder = new StringBuilder();
         if (conditions != null) {
@@ -143,7 +145,7 @@ public class LessEngine {
             }
         }
         for (final SourceCode sourceCode : codeList) {
-            if (!sourceCode.getFileName().toLowerCase().endsWith(".less")) {
+            if (Compressor.getFileType(sourceCode.getFileName()) != Compressor.FileType.LESS) {
                 resultCodeList.add(new SourceCode(sourceCode.getFileName(), sourceCode.getFileContents()));
                 continue;
             }

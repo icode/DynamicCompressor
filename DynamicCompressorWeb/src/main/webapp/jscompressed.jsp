@@ -1,3 +1,4 @@
+<%@ page import="java.net.URLEncoder" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%--
   ~ Dynamic Compressor - Java Library
@@ -29,7 +30,7 @@
     <script>
         var now = new Date();
     </script>
-    <script src="/compress.js?/script/test1.js&/script/test2.js&/script/test3.js&/script/test4.js&/script/test5.js&/script/test6.js&/script/test7.js&/script/test8.js&/script/test9.js&/script/test10.js"></script>
+    <script src="/compress.js?/script/test1.js&/script/test2.js&/script/test3.js&/script/test4.js&/script/test5.js&/script/test6.js&/script/test7.js&/script/test8.js&/script/test9.js&/script/test10.js&<%=URLEncoder.encode("/script/template/test.tpl?name=template/t1&mode=amd","utf8")%>&<%=URLEncoder.encode("/script/template/test.html?name=template/t2","utf8")%>"></script>
 </head>
 <body>
 <h3>这是JS压缩测试的测试</h3>

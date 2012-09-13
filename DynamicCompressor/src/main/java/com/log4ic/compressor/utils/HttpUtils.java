@@ -24,6 +24,7 @@
 
 package com.log4ic.compressor.utils;
 
+import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.log4ic.compressor.utils.tester.BrowserTester;
@@ -36,8 +37,10 @@ import org.slf4j.LoggerFactory;
 import javax.servlet.http.HttpServletRequest;
 import java.io.*;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -151,6 +154,19 @@ public class HttpUtils {
             }
         }
         return null;
+    }
+
+    public static Map<String, String> getParameterMap(URI uri) {
+        String qStr = uri.getQuery();
+        Map<String, String> map = Maps.newHashMap();
+        if (StringUtils.isNotBlank(qStr)) {
+            String[] params = qStr.split("&");
+            for (String param : params) {
+                String[] p = param.split("=");
+                map.put(p[0], p.length > 1 ? p[1] : null);
+            }
+        }
+        return map;
     }
 
     /**
