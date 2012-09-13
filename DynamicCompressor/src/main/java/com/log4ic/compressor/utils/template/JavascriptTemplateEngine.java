@@ -43,7 +43,8 @@ import java.util.Map;
 public class JavascriptTemplateEngine {
     public enum Mode {
         COMMON,
-        AMD
+        AMD,
+        CALLBACK
     }
 
     protected static interface RunIt {
@@ -92,6 +93,9 @@ public class JavascriptTemplateEngine {
             case AMD:
                 buffer.append("define('").append(name).append("',function(){return ");
                 break;
+            case CALLBACK:
+                buffer.append(name).append("(");
+                break;
             case COMMON:
                 buffer.append("window['").append(name).append("']=");
                 break;
@@ -105,6 +109,9 @@ public class JavascriptTemplateEngine {
         switch (mode) {
             case AMD:
                 buffer.append("})");
+                break;
+            case CALLBACK:
+                buffer.append(")");
                 break;
             case COMMON:
             default:
