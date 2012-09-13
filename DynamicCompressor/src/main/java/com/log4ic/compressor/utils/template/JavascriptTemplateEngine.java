@@ -102,15 +102,15 @@ public class JavascriptTemplateEngine {
         buffer.append(source.replaceAll("(?m)^(\\s*)(.*?)\\s*$", "$1'$2'+"));
         buffer.delete(buffer.length() - 1, buffer.length());
 
-
         switch (mode) {
             case AMD:
                 buffer.append("})");
                 break;
             case COMMON:
             default:
-                buffer.append(";");
         }
+
+        buffer.append(";");
         return buffer.toString();
     }
 

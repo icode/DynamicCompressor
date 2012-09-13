@@ -598,6 +598,11 @@ public class Compressor {
             if (type.contains(url.substring(index + 1))) {
                 String fragment;
                 try {
+                    url = URLDecoder.decode(url, "utf8");
+                } catch (UnsupportedEncodingException e) {
+                    throw new CompressionException(e);
+                }
+                try {
                     //如果是http/https 协议开头则视为跨域
                     if (HttpUtils.isHttpProtocol(url)) {
                         fragment = importCode(HttpUtils.requestFile(url), url, type, request, response);
@@ -769,11 +774,11 @@ public class Compressor {
      *
      */
     private static String removeDuplicateParameters(String queryString) throws CompressionException {
-        try {
-            queryString = URLDecoder.decode(queryString, "utf8");
-        } catch (UnsupportedEncodingException e) {
-            throw new CompressionException(e);
-        }
+//        try {
+//            queryString = URLDecoder.decode(queryString, "utf8");
+//        } catch (UnsupportedEncodingException e) {
+//            throw new CompressionException(e);
+//        }
 
         String root = null;
         int rootIndex = queryString.indexOf("root=");
@@ -798,7 +803,7 @@ public class Compressor {
                     if (p.length > 1) {
                         StringBuffer buffer = new StringBuffer();
                         noRepeatParams.add(buffer.append(p[0]).append("=").append(p[1]).toString());
-                    }else{
+                    } else {
                         noRepeatParams.add(p[0]);
                     }
                 }

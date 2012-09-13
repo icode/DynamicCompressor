@@ -30,11 +30,23 @@
     <script>
         var now = new Date();
     </script>
-    <script src="/compress.js?/script/test1.js&/script/test2.js&/script/test3.js&/script/test4.js&/script/test5.js&/script/test6.js&/script/test7.js&/script/test8.js&/script/test9.js&/script/test10.js&<%=URLEncoder.encode("/script/template/test.tpl?name=template/t1&mode=amd","utf8")%>&<%=URLEncoder.encode("/script/template/test.html?name=template/t2","utf8")%>"></script>
+    <script src="/compress.js?/script/lib/require.js&/script/test2.js&/script/test3.js&/script/test4.js&/script/test5.js&/script/test6.js&/script/test7.js&/script/test8.js&/script/test9.js&/script/test10.js&<%=URLEncoder.encode("/script/template/test.tpl?name=template/t1&mode=amd","utf8")%>&<%=URLEncoder.encode("/script/template/test.html?name=template/t2","utf8")%>"></script>
 </head>
 <body>
 <h3>这是JS压缩测试的测试</h3>
-
+<script>
+    createCode = function(str){
+        var pre = document.createElement("pre");
+        pre.appendChild(document.createTextNode(str));
+        document.body.appendChild(pre);
+    };
+    document.write('输出AMD方式的JS模版');
+    require(['template/t1'], function (tpl) {
+        createCode(tpl);
+    });
+    document.write('输出COMMON方式的JS模版');
+    createCode(window['template/t2']);
+</script>
 <div>
     <label>用时:</label>
             <span>
