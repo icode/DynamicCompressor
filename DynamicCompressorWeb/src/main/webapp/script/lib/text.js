@@ -1,3 +1,8 @@
+/**
+ * RequireJS text 2.0.1 Copyright (c) 2010-2012, The Dojo Foundation All Rights Reserved.
+ * Available via the MIT or new BSD license.
+ * see: http://github.com/requirejs/text for details
+ */
 /*jslint regexp: true */
 /*global require: false, XMLHttpRequest: false, ActiveXObject: false,
  define: false, window: false, process: false, Packages: false,
@@ -159,16 +164,12 @@ define('text', ['module'], function (module) {
             if(name.search(/\.(css|less|scss|mss|gss)$/i) !== -1){
                 var compressorCfg = config.compressor;
                 if (compressorCfg && compressorCfg.enabled === true) {
-                    var _url = '';
+                    url = '/compress.mss?' + encodeURIComponent(url);
                     if (compressorCfg.compress !== true) {
-                        _url = '/compress.mss?pretty&';
-                        url = _url + encodeURIComponent(url);
+                        url = '&pretty';
                     }
 
                     if (compressorCfg.browserCondition === true) {
-                        if (!_url) {
-                            url = '/compress.mss?' + encodeURIComponent(url);
-                        }
                         url += '&condition';
                     }
                 }
