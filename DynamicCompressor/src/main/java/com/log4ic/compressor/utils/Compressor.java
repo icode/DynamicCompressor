@@ -386,10 +386,14 @@ public class Compressor {
                     }
 
                     if (request.getAttribute(cssPath) == null) {
-                        if (fileType.contains("less") && !cssPath.endsWith(".less") && !cssPath.endsWith(".css")) {
-                            cssPath += ".less";
-                        }else if(fileType.contains("css") && !cssPath.endsWith(".css")){
-                            cssPath += ".css";
+                        if (fileType == FileType.LESS) {
+                            try {
+                                if(!type.contains(getFileType(cssPath))){
+                                    cssPath += ".less";
+                                }
+                            } catch (Exception e) {
+                                cssPath += ".less";
+                            }
                         }
                         logger.debug("导入[{}]文件", cssPath);
                         request.setAttribute(cssPath, true);
