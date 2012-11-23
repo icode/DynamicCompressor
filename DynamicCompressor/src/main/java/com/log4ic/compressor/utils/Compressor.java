@@ -386,6 +386,11 @@ public class Compressor {
                     }
 
                     if (request.getAttribute(cssPath) == null) {
+                        if (fileType.contains("less") && !cssPath.endsWith(".less") && !cssPath.endsWith(".css")) {
+                            cssPath += ".less";
+                        }else if(fileType.contains("css") && !cssPath.endsWith(".css")){
+                            cssPath += ".css";
+                        }
                         logger.debug("导入[{}]文件", cssPath);
                         request.setAttribute(cssPath, true);
                         List<SourceCode> sourceCodes = mergeCode(new String[]{cssPath}, request, response, type);
