@@ -439,7 +439,7 @@ public class Compressor {
             case LESS:
             case MSS:
                 logger.debug("修正文件内的URL相对指向...");
-                Pattern pattern = Pattern.compile("url\\(\\s*(?!['\"]?(?:data:|about:|#))([^)]+)\\)", Pattern.CASE_INSENSITIVE);
+                Pattern pattern = Pattern.compile("url\\(\\s*(?!['\"]?(?:data:|about:|#|@))([^)]+)\\)", Pattern.CASE_INSENSITIVE);
 
                 Matcher matcher = pattern.matcher(code);
 
