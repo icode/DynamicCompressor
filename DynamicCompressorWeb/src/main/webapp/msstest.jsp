@@ -32,6 +32,7 @@
     <jsp:param name="/style/style1.css" value=""/>
     <jsp:param name="/style/msstest.less" value=""/>
     <jsp:param name="condition" value="true"/>
+    <jsp:param name="level" value="2"/>
 </jsp:include>
 </body>
 </html>

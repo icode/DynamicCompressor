@@ -88,7 +88,7 @@
         <dependency>
             <groupId>com.google.closure-stylesheets</groupId>
             <artifactId>closure-stylesheets</artifactId>
-            <version>20120618</version>
+            <version>20121123</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.easymock</groupId>

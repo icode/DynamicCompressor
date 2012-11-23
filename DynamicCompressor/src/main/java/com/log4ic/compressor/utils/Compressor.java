@@ -114,8 +114,8 @@ public class Compressor {
      * @param conditions
      * @return
      */
-    public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) throws GssParserException, LessException, CompressionException {
-        return compressGss(LessEngine.parseLess(codeList, conditions), format, conditions);
+    public static String compressLess(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions, JobDescription.OptimizeStrategy level) throws GssParserException, LessException, CompressionException {
+        return compressGss(LessEngine.parseLess(codeList, conditions), format, conditions, level);
     }
 
 
@@ -220,15 +220,15 @@ public class Compressor {
     }
 
     public static String compressGss(SourceCode sourceCode) throws GssParserException {
-        return compressGss(Lists.<SourceCode>newArrayList(sourceCode), null, null);
+        return compressGss(Lists.<SourceCode>newArrayList(sourceCode), null, null, null);
     }
 
     public static String compressGss(List<SourceCode> codeList) throws GssParserException {
-        return compressGss(codeList, null, null);
+        return compressGss(codeList, null, null, null);
     }
 
-    public static String compressGss(List<SourceCode> codeList, JobDescription.OutputFormat format) throws GssParserException {
-        return compressGss(codeList, format, null);
+    public static String compressGss(List<SourceCode> codeList, JobDescription.OutputFormat format, JobDescription.OptimizeStrategy level) throws GssParserException {
+        return compressGss(codeList, format, null, level);
     }
 
     /**
@@ -244,7 +244,15 @@ public class Compressor {
         return compressGss(buildJobDesBuilder(codeList, format, conditions).getJobDescription());
     }
 
+    public static String compressGss(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions, JobDescription.OptimizeStrategy level) throws GssParserException {
+        return compressGss(buildJobDesBuilder(codeList, format, conditions, level).getJobDescription());
+    }
+
     private static JobDescriptionBuilder buildJobDesBuilder(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions) {
+        return buildJobDesBuilder(codeList, format, conditions, null);
+    }
+
+    private static JobDescriptionBuilder buildJobDesBuilder(List<SourceCode> codeList, JobDescription.OutputFormat format, List<String> conditions, JobDescription.OptimizeStrategy level) {
         JobDescriptionBuilder builder = new JobDescriptionBuilder();
         builder.setAllowWebkitKeyframes(true);
         builder.setAllowKeyframes(true);
@@ -253,6 +261,8 @@ public class Compressor {
         builder.setProcessDependencies(true);
         builder.setSimplifyCss(true);
         builder.setEliminateDeadStyles(true);
+        builder.setOptimizeStrategy(level == null ? JobDescription.OptimizeStrategy.SAFE : level);
+
         for (SourceCode code : codeList) {
             builder.addInput(code);
         }
@@ -281,6 +291,7 @@ public class Compressor {
         builder.setProcessDependencies(false);
         builder.setSimplifyCss(false);
         builder.setEliminateDeadStyles(false);
+        builder.setOptimizeStrategy(JobDescription.OptimizeStrategy.NONE);
         return parseGss(builder.getJobDescription());
     }
 
@@ -388,7 +399,7 @@ public class Compressor {
                     if (request.getAttribute(cssPath) == null) {
                         if (fileType == FileType.LESS) {
                             try {
-                                if(!type.contains(getFileType(cssPath))){
+                                if (!type.contains(getFileType(cssPath))) {
                                     cssPath += ".less";
                                 }
                             } catch (Exception e) {
@@ -654,6 +665,22 @@ public class Compressor {
     }
 
 
+    private static JobDescription.OptimizeStrategy getCompressGssOptimizeStrategy(String levelStr) throws CompressionException {
+        JobDescription.OptimizeStrategy level = JobDescription.OptimizeStrategy.SAFE;
+        if (StringUtils.isNotBlank(levelStr)) {
+            try {
+                level = JobDescription.OptimizeStrategy.values()[Integer.parseInt(levelStr)];
+            } catch (Exception e) {
+                try {
+                    level = JobDescription.OptimizeStrategy.valueOf(levelStr);
+                } catch (IllegalArgumentException ae) {
+                    //
+                }
+            }
+        }
+        return level;
+    }
+
     /**
      * 压缩
      *
@@ -671,10 +698,10 @@ public class Compressor {
         boolean isDebug = HttpUtils.getBooleanParam(request, "debug");
         String code = "";
         if (fileSourceList.size() > 0) {
+            String levelParam = request.getParameter("level");
             switch (type) {
                 case JS:
                     CompilationLevel level = CompilationLevel.SIMPLE_OPTIMIZATIONS;
-                    String levelParam = request.getParameter("level");
                     if (StringUtils.isNotBlank(levelParam)) {
                         try {
                             level = CompilationLevel.values()[Integer.parseInt(levelParam)];
@@ -682,11 +709,8 @@ public class Compressor {
                             try {
                                 level = CompilationLevel.valueOf(levelParam);
                             } catch (IllegalArgumentException ae) {
-                                throw new CompressionException("ServletException", e);
+                                //
                             }
-                        }
-                        if (level == null) {
-                            level = CompilationLevel.SIMPLE_OPTIMIZATIONS;
                         }
                     }
                     JSSourceFile[] sourceFiles = new JSSourceFile[fileSourceList.size()];
@@ -701,15 +725,23 @@ public class Compressor {
                     code = Compressor.compressJS(sourceFiles, level, isDebug);
                     break;
                 case CSS:
-                    code = Compressor.compressGss(fileSourceList, getGssFormat(isDebug, request));
+                    code = Compressor.compressGss(fileSourceList,
+                            getGssFormat(isDebug, request),
+                            getCompressGssOptimizeStrategy(levelParam));
                     break;
                 case GSS:
-                    code = Compressor.compressGss(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
+                    code = Compressor.compressGss(fileSourceList,
+                            getGssFormat(isDebug, request),
+                            buildTrueConditions(request),
+                            getCompressGssOptimizeStrategy(levelParam));
                     break;
                 case LESS:
                 case MSS:
                     //压缩代码并设置浏览器断言
-                    code = Compressor.compressLess(fileSourceList, getGssFormat(isDebug, request), buildTrueConditions(request));
+                    code = Compressor.compressLess(fileSourceList,
+                            getGssFormat(isDebug, request),
+                            buildTrueConditions(request),
+                            getCompressGssOptimizeStrategy(levelParam));
                     break;
             }
         }
