@@ -262,9 +262,8 @@ public class Compressor {
         builder.setSimplifyCss(true);
         builder.setEliminateDeadStyles(true);
         builder.setOptimizeStrategy(level == null ? JobDescription.OptimizeStrategy.SAFE : level);
-
         for (SourceCode code : codeList) {
-            builder.addInput(code);
+            builder.addInput(new SourceCode(code.getFileName(), fixIE9Hack(code.getFileContents())));
         }
         if (format != null) {
             builder.setOutputFormat(format);
@@ -357,6 +356,17 @@ public class Compressor {
         return fixUrlPath(code, fileUrl, type, null);
     }
 
+    /**
+     * IE9 \9 HACK去掉\9前面空格
+     *
+     * @param fragment
+     * @return
+     */
+    public static String fixIE9Hack(String fragment) {
+        //IE9 \9 HACK去掉\9前面空格
+        return fragment.replaceAll("\\s+\\\\", "\\9");
+    }
+
     private static final String importPatternStr = "@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?";
     private static final Pattern importPattern = Pattern.compile(importPatternStr, Pattern.CASE_INSENSITIVE);
 
@@ -414,7 +424,7 @@ public class Compressor {
                             if (fileType.equals(t)) {
                                 codeBuilder.append(s.getFileContents());
                             } else {
-                                codeBuilder.append(mergeCode(Lists.<SourceCode>newArrayList(s), request, t));
+                                codeBuilder.append(fixIE9Hack(mergeCode(Lists.<SourceCode>newArrayList(s), request, t)));
                             }
                         }
                     }

@@ -28,7 +28,7 @@
 
     <groupId>com.log4ic.compressor</groupId>
     <artifactId>dynamic-compressor</artifactId>
-    <version>1.1.9</version>
+    <version>1.1.10</version>
     <packaging>jar</packaging>
 
     <name>Dynamic Compressor</name>
@@ -128,14 +128,14 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>jcl-over-slf4j</artifactId>
-            <version>1.6.4</version>
+            <version>1.6.6</version>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.6.4</version>
+            <version>1.6.6</version>
         </dependency>
 
         <dependency>
