@@ -53,23 +53,30 @@ public class JavascriptTemplateEngine {
 
     protected static String run(URI uri, String source, RunIt runIt) {
         Map<String, String> params = HttpUtils.getParameterMap(uri);
-        String name = params.get("name");
-        String mode = params.get("mode");
-        if (StringUtils.isBlank(name)) {
-            name = uri.getPath();
-            int lastI = name.lastIndexOf(".");
-            name = name.substring(name.lastIndexOf("/") + 1, lastI);
-        }
+        String name;
         Mode m = null;
-        if (StringUtils.isNotBlank(mode)) {
-            try {
-                m = Mode.valueOf(mode.toUpperCase());
-            } catch (Exception e) {
-                //fuck ide
+        String amd = params.get("amd");
+        if (StringUtils.isNotBlank(amd)) {
+            name = amd;
+            m = Mode.AMD;
+        } else {
+            name = params.get("name");
+            String mode = params.get("mode");
+            if (StringUtils.isBlank(name)) {
+                name = uri.getPath();
+                int lastI = name.lastIndexOf(".");
+                name = name.substring(name.lastIndexOf("/") + 1, lastI);
             }
-        }
-        if (m == null) {
-            m = Mode.COMMON;
+            if (StringUtils.isNotBlank(mode)) {
+                try {
+                    m = Mode.valueOf(mode.toUpperCase());
+                } catch (Exception e) {
+                    //fuck ide
+                }
+            }
+            if (m == null) {
+                m = Mode.COMMON;
+            }
         }
         return runIt.run(
                 name,
@@ -88,7 +95,7 @@ public class JavascriptTemplateEngine {
     }
 
     public static String parse(String name, String source, Mode mode) {
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         switch (mode) {
             case AMD:
                 buffer.append("define('").append(name).append("',function(){return ");
@@ -143,7 +150,7 @@ public class JavascriptTemplateEngine {
         compressor.setRemoveInputAttributes(true);     //remove optional attributes from input tags
         compressor.setSimpleBooleanAttributes(true);   //remove values from boolean tag attributes
         compressor.setRemoveJavaScriptProtocol(true);  //remove "javascript:" from inline event handlers
-        compressor.setRemoveHttpProtocol(true);        //replace "http://" with "//" inside tag attributes
+        //compressor.setRemoveHttpProtocol(true);        //replace "http://" with "//" inside tag attributes
 //        compressor.setRemoveHttpsProtocol(true);       //replace "https://" with "//" inside tag attributes
         compressor.setPreserveLineBreaks(false);        //preserves original line breaks
         compressor.setRemoveSurroundingSpaces(HtmlCompressor.ALL_TAGS); //remove spaces around provided tags

@@ -28,7 +28,7 @@
 
     <groupId>com.log4ic.compressor</groupId>
     <artifactId>dynamic-compressor</artifactId>
-    <version>1.1.10</version>
+    <version>1.2.0</version>
     <packaging>jar</packaging>
 
     <name>Dynamic Compressor</name>
@@ -156,7 +156,7 @@
         <dependency>
             <groupId>com.google.javascript</groupId>
             <artifactId>closure-compiler</artifactId>
-            <version>r1810</version>
+            <version>r2180</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.googlecode.jarjar</groupId>
@@ -181,6 +181,10 @@
                 <exclusion>
                     <artifactId>guava</artifactId>
                     <groupId>com.google.guava</groupId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.json</groupId>
+                    <artifactId>json</artifactId>
                 </exclusion>
                 <exclusion>
                     <artifactId>protobuf-java</artifactId>

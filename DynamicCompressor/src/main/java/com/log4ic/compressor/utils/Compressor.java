@@ -36,6 +36,8 @@ import com.google.common.css.compiler.passes.PassRunner;
 import com.google.common.css.compiler.passes.PrettyPrinter;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
+import org.mozilla.javascript.Parser;
+import org.mozilla.javascript.ast.*;
 import com.log4ic.compressor.cache.Cache;
 import com.log4ic.compressor.cache.CacheManager;
 import com.log4ic.compressor.exception.CompressionException;
@@ -82,30 +84,6 @@ public class Compressor {
 
     private static final Map<String, byte[]> progressCacheLock = new FastMap<String, byte[]>();
 
-    /**
-     * 压缩JS
-     *
-     * @param code
-     * @param options
-     * @param jsOutputFile
-     * @return
-     */
-    public static String compressJS(String code, CompilerOptions options, String jsOutputFile) {
-        return compressJS(new JSSourceFile[]{JSSourceFile.fromCode("all.js", code)}, options, jsOutputFile);
-    }
-
-    /**
-     * 压缩JS
-     *
-     * @param jsFiles
-     * @param options
-     * @param jsOutputFile
-     * @return
-     */
-    public static String compressJS(JSSourceFile[] jsFiles, CompilerOptions options, String jsOutputFile) {
-        return compressJS(new JSSourceFile[]{JSSourceFile.fromCode("lib.js", "")}, jsFiles, options, jsOutputFile);
-    }
-
 
     /**
      * 压缩LESS
@@ -118,6 +96,30 @@ public class Compressor {
         return compressGss(LessEngine.parseLess(codeList, conditions), format, conditions, level);
     }
 
+    /**
+     * 压缩JS
+     *
+     * @param code
+     * @param options
+     * @param jsOutputFile
+     * @return
+     */
+    public static String compressJS(String code, CompilerOptions options, String jsOutputFile) {
+        return compressJS(Lists.<SourceFile>newArrayList(SourceFile.fromCode("all.js", code)), options, jsOutputFile);
+    }
+
+    /**
+     * 压缩JS
+     *
+     * @param jsFiles
+     * @param options
+     * @param jsOutputFile
+     * @return
+     */
+    public static String compressJS(List<SourceFile> jsFiles, CompilerOptions options, String jsOutputFile) {
+        return compressJS(Lists.<SourceFile>newArrayList(SourceFile.fromCode("lib.js", "")), jsFiles, options, jsOutputFile);
+    }
+
 
     /**
      * 压缩JS
@@ -128,7 +130,7 @@ public class Compressor {
      * @param jsOutputFile
      * @return
      */
-    public static String compressJS(JSSourceFile[] externFiles, JSSourceFile[] jsFiles, CompilerOptions options, String jsOutputFile) {
+    public static String compressJS(List<SourceFile> externFiles, List<SourceFile> jsFiles, CompilerOptions options, String jsOutputFile) {
         String compressed = null;
         Compiler compiler = new Compiler();
         logger.debug("压缩JS...");
@@ -146,23 +148,6 @@ public class Compressor {
     /**
      * 压缩JS
      *
-     * @param codes
-     * @param options
-     * @return
-     */
-    public static String compressJS(List<String> codes, CompilerOptions options, String jsOutputFile) {
-        StringBuilder allCode = new StringBuilder();
-
-        for (String code : codes) {
-            allCode.append(code);
-        }
-
-        return compressJS(allCode.toString(), options, jsOutputFile);
-    }
-
-    /**
-     * 压缩JS
-     *
      * @param code
      * @param level
      * @param outPath
@@ -170,31 +155,30 @@ public class Compressor {
      * @return
      */
     public static String compressJS(String code, CompilationLevel level, String outPath, Boolean isDebug) {
+
+        return compressJS(code, buildJSCompilerOptions(level, isDebug), outPath);
+    }
+
+    private static CompilerOptions buildJSCompilerOptions(CompilationLevel level, Boolean isDebug) {
         CompilerOptions options = new CompilerOptions();
         options.setCodingConvention(new ClosureCodingConvention());
         level.setOptionsForCompilationLevel(options);
         if (isDebug) {
             level.setDebugOptionsForCompilationLevel(options);
         }
-        return compressJS(code, options, outPath);
+        return options;
     }
 
     /**
      * 压缩JS
      *
-     * @param jsSourceFiles
+     * @param SourceFiles
      * @param level
      * @param isDebug
      * @return
      */
-    public static String compressJS(JSSourceFile[] jsSourceFiles, CompilationLevel level, Boolean isDebug) {
-        CompilerOptions options = new CompilerOptions();
-        options.setCodingConvention(new ClosureCodingConvention());
-        level.setOptionsForCompilationLevel(options);
-        if (isDebug) {
-            level.setDebugOptionsForCompilationLevel(options);
-        }
-        return compressJS(jsSourceFiles, options, null);
+    public static String compressJS(List<SourceFile> SourceFiles, CompilationLevel level, Boolean isDebug) {
+        return compressJS(SourceFiles, buildJSCompilerOptions(level, isDebug), null);
     }
 
     /**
@@ -370,7 +354,7 @@ public class Compressor {
     private static final String importPatternStr = "@import\\s+(?:url\\()?[\\s\\'\\\"]?([^\\'\\\";\\s\\n]+)[\\s\\'\\\"]?(?:\\))?;?";
     private static final Pattern importPattern = Pattern.compile(importPatternStr, Pattern.CASE_INSENSITIVE);
 
-    public static String importCode(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException, LessException, GssParserException {
+    public static String importCode(String code, String fileUrl, FileType type, HttpServletRequest request, HttpServletResponse response) throws CompressionException, LessException, GssParserException, IOException {
         StringBuilder codeBuilder = new StringBuilder();
         switch (type) {
             case GSS:
@@ -691,6 +675,54 @@ public class Compressor {
         return level;
     }
 
+
+    private static SourceFile processAMDDefine(final SourceFile source) throws IOException {
+        //查找是否有AMD参数，进行模块名称更改
+        Map<String, String> params = HttpUtils.getParameterMap(URI.create(source.getName()));
+        final String moduleName = params.get("amd");
+        if (StringUtils.isNotBlank(moduleName)) {
+            //查找JS内define函数定义，并更改或增加模块名称
+
+            Parser jsParser = new Parser();
+            AstRoot jsRoot = jsParser.parse(source.getCode(), source.getName(), 1);
+
+            //查找define位置并替换模块名
+            jsRoot.visit(new NodeVisitor() {
+                @Override
+                public boolean visit(AstNode nodes) {
+                    //查找define位置
+                    if (nodes instanceof ExpressionStatement) {
+                        ExpressionStatement es = (ExpressionStatement) nodes;
+                        AstNode ex = es.getExpression();
+                        if (ex instanceof FunctionCall) {
+                            FunctionCall fc = (FunctionCall) ex;
+                            if (fc.getTarget().toSource().equals("define")) {
+                                List<AstNode> args = fc.getArguments();
+                                //替换模块名
+                                StringLiteral moduleNameSl;
+                                if (args.size() > 0 && args.get(0) instanceof StringLiteral) {
+                                    moduleNameSl = ((StringLiteral) args.get(0));
+                                } else {
+                                    moduleNameSl = new StringLiteral();
+                                    args.add(0, moduleNameSl);
+                                    moduleNameSl.setParent(fc);
+                                    moduleNameSl.setQuoteCharacter('\'');
+                                }
+                                moduleNameSl.setValue(moduleName);
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }
+            });
+
+            return SourceFile.fromCode(source.getName(), jsRoot.toSource());
+        }
+        return source;
+    }
+
+
     /**
      * 压缩
      *
@@ -703,7 +735,7 @@ public class Compressor {
      * @throws com.log4ic.compressor.exception.CompressionException
      *
      */
-    public static String compressCode(List<SourceCode> fileSourceList, HttpServletRequest request, FileType type) throws GssParserException, CompressionException, LessException {
+    public static String compressCode(List<SourceCode> fileSourceList, HttpServletRequest request, FileType type) throws GssParserException, CompressionException, LessException, IOException {
         //压缩
         boolean isDebug = HttpUtils.getBooleanParam(request, "debug");
         String code = "";
@@ -723,14 +755,17 @@ public class Compressor {
                             }
                         }
                     }
-                    JSSourceFile[] sourceFiles = new JSSourceFile[fileSourceList.size()];
-                    for (int i = 0; i < fileSourceList.size(); i++) {
-                        SourceCode source = fileSourceList.get(i);
+                    List<SourceFile> sourceFiles = Lists.newArrayList();
+                    for (SourceCode source : fileSourceList) {
+                        //如果是模板，进行模板解释压缩
+                        SourceFile jsSource = SourceFile.fromCode(source.getFileName(), source.getFileContents());
                         if (FileType.TPL.contains(getFileTypeString(source.getFileName()))) {
                             String tpl = JavascriptTemplateEngine.compress(URI.create(source.getFileName()), source.getFileContents());
-                            source = new SourceCode(source.getFileName(), tpl);
+                            jsSource = SourceFile.fromCode(source.getFileName(), tpl);
+                        } else if (fileSourceList.size() > 1) {
+                            jsSource = processAMDDefine(jsSource);
                         }
-                        sourceFiles[i] = JSSourceFile.fromCode(source.getFileName(), source.getFileContents());
+                        sourceFiles.add(jsSource);
                     }
                     code = Compressor.compressJS(sourceFiles, level, isDebug);
                     break;
@@ -926,7 +961,7 @@ public class Compressor {
         return type;
     }
 
-    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request, FileType type) throws LessException, GssParserException, CompressionException {
+    private static String mergeCode(List<SourceCode> codeList, HttpServletRequest request, FileType type) throws LessException, GssParserException, CompressionException, IOException {
         StringBuilder builder = new StringBuilder();
         List<String> con = buildTrueConditions(request);
 
@@ -949,7 +984,16 @@ public class Compressor {
                     String tpl = JavascriptTemplateEngine.parse(URI.create(code.getFileName()), code.getFileContents());
                     builder.append(tpl).append("\n");
                 } else {
-                    builder.append(code.getFileContents()).append("\n");
+                    if(type == FileType.JS && codeList.size() > 1){
+                        builder.append(processAMDDefine(
+                                            SourceFile.fromCode(
+                                                code.getFileName(),
+                                                code.getFileContents())
+                                       ).getCode());
+                    }else{
+                        builder.append(code.getFileContents());
+                    }
+                    builder.append("\n");
                 }
             }
         }
