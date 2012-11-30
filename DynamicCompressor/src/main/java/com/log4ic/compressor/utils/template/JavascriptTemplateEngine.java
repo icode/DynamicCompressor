@@ -55,9 +55,8 @@ public class JavascriptTemplateEngine {
         Map<String, String> params = HttpUtils.getParameterMap(uri);
         String name;
         Mode m = null;
-        String amd = params.get("amd");
-        if (StringUtils.isNotBlank(amd)) {
-            name = amd;
+        if (params.containsKey("amd")) {
+            name = params.get("amd");
             m = Mode.AMD;
         } else {
             name = params.get("name");
@@ -98,7 +97,11 @@ public class JavascriptTemplateEngine {
         StringBuilder buffer = new StringBuilder();
         switch (mode) {
             case AMD:
-                buffer.append("define('").append(name).append("',function(){return ");
+                buffer.append("define(");
+                if (StringUtils.isNotBlank(name)) {
+                    buffer.append("'").append(name).append("',");
+                }
+                buffer.append("function(){return ");
                 break;
             case CALLBACK:
                 buffer.append(name).append("(");

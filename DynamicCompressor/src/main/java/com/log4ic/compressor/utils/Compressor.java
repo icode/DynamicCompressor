@@ -36,8 +36,6 @@ import com.google.common.css.compiler.passes.PassRunner;
 import com.google.common.css.compiler.passes.PrettyPrinter;
 import com.google.javascript.jscomp.*;
 import com.google.javascript.jscomp.Compiler;
-import org.mozilla.javascript.Parser;
-import org.mozilla.javascript.ast.*;
 import com.log4ic.compressor.cache.Cache;
 import com.log4ic.compressor.cache.CacheManager;
 import com.log4ic.compressor.exception.CompressionException;
@@ -53,6 +51,8 @@ import javolution.util.FastList;
 import javolution.util.FastMap;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.mozilla.javascript.Parser;
+import org.mozilla.javascript.ast.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,6 +162,7 @@ public class Compressor {
     private static CompilerOptions buildJSCompilerOptions(CompilationLevel level, Boolean isDebug) {
         CompilerOptions options = new CompilerOptions();
         options.setCodingConvention(new ClosureCodingConvention());
+        options.setLanguageIn(CompilerOptions.LanguageMode.ECMASCRIPT5_STRICT);
         level.setOptionsForCompilationLevel(options);
         if (isDebug) {
             level.setDebugOptionsForCompilationLevel(options);
@@ -723,6 +724,29 @@ public class Compressor {
     }
 
 
+    private static URI getTemplateUri(String fileName) {
+        URI uri = URI.create(fileName);
+        Map<String, String> params = HttpUtils.getParameterMap(uri);
+        if (StringUtils.isNotBlank(params.get("amd")) ||
+                (("amd".equals(params.get("mode")) || "1".equals(params.get("mode")))
+                        && StringUtils.isNotBlank(params.get("name")))) {
+            StringBuilder path = new StringBuilder(uri.getRawPath());
+            path.append("?");
+            for (String name : params.keySet()) {
+                if (!name.equals("amd") && !name.equals("name")) {
+                    path.append(name).append("=").append(params.get(name)).append("&");
+                }
+            }
+            if (params.containsKey("amd")) {
+                path.append("amd");
+            } else {
+                path.deleteCharAt(path.length() - 1);
+            }
+            uri = URI.create(path.toString());
+        }
+        return uri;
+    }
+
     /**
      * 压缩
      *
@@ -760,7 +784,13 @@ public class Compressor {
                         //如果是模板，进行模板解释压缩
                         SourceFile jsSource = SourceFile.fromCode(source.getFileName(), source.getFileContents());
                         if (FileType.TPL.contains(getFileTypeString(source.getFileName()))) {
-                            String tpl = JavascriptTemplateEngine.compress(URI.create(source.getFileName()), source.getFileContents());
+                            URI uri;
+                            if (fileSourceList.size() <= 1) {
+                                uri = getTemplateUri(source.getFileName());
+                            } else {
+                                uri = URI.create(source.getFileName());
+                            }
+                            String tpl = JavascriptTemplateEngine.compress(uri, source.getFileContents());
                             jsSource = SourceFile.fromCode(source.getFileName(), tpl);
                         } else if (fileSourceList.size() > 1) {
                             jsSource = processAMDDefine(jsSource);
@@ -981,16 +1011,22 @@ public class Compressor {
         if (type == FileType.JS || type == FileType.CSS) {
             for (SourceCode code : codeList) {
                 if (FileType.TPL.contains(getFileTypeString(code.getFileName()))) {
-                    String tpl = JavascriptTemplateEngine.parse(URI.create(code.getFileName()), code.getFileContents());
+                    URI uri;
+                    if (codeList.size() <= 1) {
+                        uri = getTemplateUri(code.getFileName());
+                    } else {
+                        uri = URI.create(code.getFileName());
+                    }
+                    String tpl = JavascriptTemplateEngine.parse(uri, code.getFileContents());
                     builder.append(tpl).append("\n");
                 } else {
-                    if(type == FileType.JS && codeList.size() > 1){
+                    if (type == FileType.JS && codeList.size() > 1) {
                         builder.append(processAMDDefine(
-                                            SourceFile.fromCode(
-                                                code.getFileName(),
-                                                code.getFileContents())
-                                       ).getCode());
-                    }else{
+                                SourceFile.fromCode(
+                                        code.getFileName(),
+                                        code.getFileContents())
+                        ).getCode());
+                    } else {
                         builder.append(code.getFileContents());
                     }
                     builder.append("\n");
