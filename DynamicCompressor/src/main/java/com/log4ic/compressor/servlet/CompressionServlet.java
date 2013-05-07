@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletConfig;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -97,6 +98,19 @@ public class CompressionServlet extends HttpServlet {
     }
 
 
+    protected String getRootAbsolutePath(ServletContext context) {
+        String prefix = context.getRealPath("/");
+
+        if (StringUtils.isBlank(prefix)) {
+            java.net.URL url = this.getClass().getResource("/");
+            prefix = url.getFile();
+        }
+        if (!prefix.endsWith("/")) {
+            prefix += "/";
+        }
+        return prefix;
+    }
+
     @Override
     public void init(ServletConfig config) throws ServletException {
         if (!initialized) {
@@ -111,11 +125,11 @@ public class CompressionServlet extends HttpServlet {
                 cacheDir = config.getInitParameter("cacheDir");
                 if (StringUtils.isNotBlank(cacheDir)) {
                     if (cacheDir.startsWith("{contextPath}")) {
-                        cacheDir = config.getServletContext().getRealPath(cacheDir.replace("{contextPath}", ""));
+                        cacheDir = getRootAbsolutePath(config.getServletContext()) + cacheDir.replace("{contextPath}", "");
                     }
                     cacheDir = FileUtils.appendSeparator(cacheDir);
                 } else {
-                    cacheDir = config.getServletContext().getRealPath("/static/compressed/");
+                    cacheDir = getRootAbsolutePath(config.getServletContext()) + "static/compressed/";
                 }
                 //缓存类型
                 String cacheTypeStr = config.getInitParameter("cacheType");
