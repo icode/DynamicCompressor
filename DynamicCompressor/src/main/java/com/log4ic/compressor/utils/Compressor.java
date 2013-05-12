@@ -1012,11 +1012,11 @@ public class Compressor {
             for (SourceCode code : codeList) {
                 if (FileType.TPL.contains(getFileTypeString(code.getFileName()))) {
                     URI uri;
-                    if (codeList.size() <= 1) {
-                        uri = getTemplateUri(code.getFileName());
-                    } else {
+//                    if (codeList.size() <= 1) {
+//                        uri = getTemplateUri(code.getFileName());
+//                    } else {
                         uri = URI.create(code.getFileName());
-                    }
+//                    }
                     String tpl = JavascriptTemplateEngine.parse(uri, code.getFileContents());
                     builder.append(tpl).append("\n");
                 } else {
