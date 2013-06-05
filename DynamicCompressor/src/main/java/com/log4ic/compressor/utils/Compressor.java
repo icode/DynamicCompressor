@@ -162,7 +162,7 @@ public class Compressor {
     private static CompilerOptions buildJSCompilerOptions(CompilationLevel level, Boolean isDebug) {
         CompilerOptions options = new CompilerOptions();
         options.setCodingConvention(new ClosureCodingConvention());
-        options.setLanguageIn(CompilerOptions.LanguageMode.ECMASCRIPT5_STRICT);
+        options.setLanguageIn(CompilerOptions.LanguageMode.ECMASCRIPT5);
         level.setOptionsForCompilationLevel(options);
         if (isDebug) {
             level.setDebugOptionsForCompilationLevel(options);
