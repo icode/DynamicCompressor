@@ -289,4 +289,12 @@ public class SimpleCache implements Serializable, Cache {
     public void setExpired(boolean expired) {
         this.isExpired = expired;
     }
+
+    void setLastVisitDate(Date lastVisitDate) {
+        this.lastVisitDate = lastVisitDate;
+    }
+
+    void setHitTimes(int hitTimes) {
+        this.hitTimes = hitTimes;
+    }
 }

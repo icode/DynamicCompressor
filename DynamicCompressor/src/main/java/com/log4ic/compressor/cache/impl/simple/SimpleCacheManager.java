@@ -26,7 +26,6 @@ package com.log4ic.compressor.cache.impl.simple;
 
 import com.log4ic.compressor.cache.AbstractCacheManager;
 import com.log4ic.compressor.cache.Cache;
-import com.log4ic.compressor.cache.CacheFile;
 import com.log4ic.compressor.cache.CacheType;
 import com.log4ic.compressor.cache.exception.CacheException;
 import com.log4ic.compressor.utils.Compressor;
@@ -79,7 +78,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
         //建立缓存
         Cache cCache = null;
         try {
-            cCache = new PrivateSetCache(key, value, this.getCacheType(),
+            cCache = new SimpleCache(key, value, this.getCacheType(),
                     fileType, this.getCacheDir());
         } catch (CacheException e) {
             logger.error("建立缓存失败", e);
@@ -178,7 +177,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
      * @return Cache
      */
     public Cache get(final String key) {
-        PrivateSetCache sCache = (PrivateSetCache) this.cache.get(key);
+        SimpleCache sCache = (SimpleCache) this.cache.get(key);
         if (sCache == null) {
             // 查看缓存文件是否存在
             Cache cache = null;
@@ -188,7 +187,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
                 logger.error("从文件创建缓存内容失败", e);
             }
             if (cache != null) {
-                sCache = (PrivateSetCache) cache;
+                sCache = (SimpleCache) cache;
 
                 final SimpleCacheManager manager = this;
                 final Cache finalCache = cache;
@@ -203,7 +202,7 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
         }
 
         if (sCache != null) {
-            final PrivateSetCache finalSCache = sCache;
+            final SimpleCache finalSCache = sCache;
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -294,31 +293,5 @@ public class SimpleCacheManager extends AbstractCacheManager implements Serializ
             }
         }
         logger.debug("标记了" + i + "个过期缓存!");
-    }
-
-    /**
-     * 重新继承Cache以设置值
-     */
-    private class PrivateSetCache extends SimpleCache {
-
-        protected PrivateSetCache(String key, CacheType type, String dir) {
-            super(key, type, dir);
-        }
-
-        public PrivateSetCache(String key, String content, CacheType type, Compressor.FileType fileType, String dir) throws CacheException {
-            super(key, content, type, fileType, dir);
-        }
-
-        public PrivateSetCache(String key, CacheFile file, CacheType type, String dir) {
-            super(key, file, type, dir);
-        }
-
-        private void setLastVisitDate(Date lastVisitDate) {
-            super.lastVisitDate = lastVisitDate;
-        }
-
-        private void setHitTimes(int hitTimes) {
-            super.hitTimes = hitTimes;
-        }
     }
 }
