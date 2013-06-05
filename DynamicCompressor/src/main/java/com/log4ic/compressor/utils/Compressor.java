@@ -785,11 +785,11 @@ public class Compressor {
                         SourceFile jsSource = SourceFile.fromCode(source.getFileName(), source.getFileContents());
                         if (FileType.TPL.contains(getFileTypeString(source.getFileName()))) {
                             URI uri;
-                            if (fileSourceList.size() <= 1) {
-                                uri = getTemplateUri(source.getFileName());
-                            } else {
+//                            if (fileSourceList.size() <= 1) {
+//                                uri = getTemplateUri(source.getFileName());
+//                            } else {
                                 uri = URI.create(source.getFileName());
-                            }
+//                            }
                             String tpl = JavascriptTemplateEngine.compress(uri, source.getFileContents());
                             jsSource = SourceFile.fromCode(source.getFileName(), tpl);
                         } else if (fileSourceList.size() > 1) {
