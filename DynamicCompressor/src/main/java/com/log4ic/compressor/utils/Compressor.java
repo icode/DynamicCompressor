@@ -337,8 +337,8 @@ public class Compressor {
      * @param type
      * @return
      */
-    public static String fixUrlPath(String code, String fileUrl, FileType type) {
-        return fixUrlPath(code, fileUrl, type, null);
+    public static String fixUrlPath(HttpServletRequest requst, String code, String fileUrl, FileType type) {
+        return fixUrlPath(requst, code, fileUrl, type, null);
     }
 
     /**
@@ -436,7 +436,7 @@ public class Compressor {
      * @param fileDomain
      * @return
      */
-    public static String fixUrlPath(String code, String fileUrl, FileType type, String fileDomain) {
+    public static String fixUrlPath(HttpServletRequest req, String code, String fileUrl, FileType type, String fileDomain) {
 
         StringBuilder codeBuffer = new StringBuilder();
         switch (type) {
@@ -475,6 +475,8 @@ public class Compressor {
                             fileDomain = "http://" + fileDomain;
                         }
                         url = fileDomain + url;
+                    } else {
+                        url = req.getContextPath() + (url.startsWith("/") ? url : "/" + url);
                     }
                     codeBuffer.append(url);
                     codeBuffer.append(")");
@@ -788,7 +790,7 @@ public class Compressor {
 //                            if (fileSourceList.size() <= 1) {
 //                                uri = getTemplateUri(source.getFileName());
 //                            } else {
-                                uri = URI.create(source.getFileName());
+                            uri = URI.create(source.getFileName());
 //                            }
                             String tpl = JavascriptTemplateEngine.compress(uri, source.getFileContents());
                             jsSource = SourceFile.fromCode(source.getFileName(), tpl);
@@ -1015,7 +1017,7 @@ public class Compressor {
 //                    if (codeList.size() <= 1) {
 //                        uri = getTemplateUri(code.getFileName());
 //                    } else {
-                        uri = URI.create(code.getFileName());
+                    uri = URI.create(code.getFileName());
 //                    }
                     String tpl = JavascriptTemplateEngine.parse(uri, code.getFileContents());
                     builder.append(tpl).append("\n");
@@ -1089,7 +1091,7 @@ public class Compressor {
                 List<SourceCode> sourceCodeList = Lists.newArrayList();
                 //修正css里面的路径
                 for (SourceCode source : codeList) {
-                    SourceCode s = new SourceCode(source.getFileName(), fixUrlPath(source.getFileContents(),
+                    SourceCode s = new SourceCode(source.getFileName(), fixUrlPath(request, source.getFileContents(),
                             source.getFileName(),
                             type,
                             fileDomain
